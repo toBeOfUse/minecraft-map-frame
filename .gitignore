@@ -1,3 +1,7 @@
+/public/maps/*.png
+/raw_data_processing/map_*.json
+/raw_data_processing/*.dat
+
 .DS_Store
 node_modules
 /dist
