@@ -3,36 +3,58 @@ import json
 from pathlib import Path
 import re
 from collections import defaultdict
+import gzip
 
-with open("colorchart.json") as color_chart_file:
+
+def nbt_search(nbt_bytes, key, value_type):
+    # using .find to scan through the whole bytes object for each separate key seems
+    # bad, but in the files i've seen the keys we want are always close to the
+    # beginning; if this is not always the case, this function could be made a
+    # constructor for a class so that it only scans through and parses the file once
+    # and builds a dict of data that it refers to on search calls
+    pos = nbt_bytes.find(key)+len(key)
+    if value_type == "int":
+        return int.from_bytes(nbt_bytes[pos:pos+4], byteorder="big", signed=True)
+    elif value_type == "byte":
+        return int.from_bytes(nbt_bytes[pos:pos+1], byteorder="big", signed=True)
+    elif value_type == "bytes":
+        size = nbt_search(nbt_bytes, key, "int")
+        return nbt_bytes[pos+4:pos+4+size]
+
+
+with open("./colorchart.json") as color_chart_file:
     color_chart = json.load(color_chart_file)
 
 for i in range(len(color_chart)):
     color_chart[i] = bytes(int(x) for x in color_chart[i].split(", "))
 
-map_file_re = re.compile(r"map_(\d+).json")
+map_file_re = re.compile(r"map_(\d+).dat")
 
 processed_maps = defaultdict(list)
 
-for file in Path('.').glob("map_*.json"):
+for file in Path('.').glob("map_*.dat"):
 
-    with open(file) as map_file:
-        map_data = json.load(map_file)["data"]
+    with open(file, "rb") as data_file:
+        raw_data = gzip.decompress(data_file.read())
 
-    side_length = 128*2**map_data["scale"]
+    map_scale = nbt_search(raw_data, b'scale', 'byte')
+    map_x_center = nbt_search(raw_data, b'xCenter', 'int')
+    map_z_center = nbt_search(raw_data, b'zCenter', 'int')
+
+    side_length = 128*2**map_scale
     zero_point = -64 + side_length/2
-    relative_x = int((map_data["xCenter"]-zero_point)//side_length)
-    relative_y = int((map_data["zCenter"]-zero_point)//side_length)
+    relative_x = int((map_x_center-zero_point)//side_length)
+    relative_y = int((map_z_center-zero_point)//side_length)
 
-    color_codes = map_data["colors"]
+    color_codes = nbt_search(raw_data, b'colors', 'bytes')
     assert len(color_codes) == 128*128
 
     image_bytes = bytearray(128*128*4)
     blanks_encountered = 0
     max_blanks = 128*128/2
-    for i in range(len(color_codes)):
-        image_bytes[i*4:i*4+3] = color_chart[color_codes[i]]
-        if color_chart[color_codes[i]] == b"\xff\xff\xff\x00":
+    for i in range(0, len(color_codes)*4, 4):
+        image_bytes[i:i+3] = color_chart[color_codes[int(i//4)]]
+        if color_chart[color_codes[int(i//4)]] == b"\xff\xff\xff\x00":
             blanks_encountered += 1
         if blanks_encountered > max_blanks:
             break
@@ -41,13 +63,13 @@ for file in Path('.').glob("map_*.json"):
         map_id_match = map_file_re.search(str(file))
         map_id = map_id_match[1] or "no_id"
 
-        map_image_filename = f"../public/maps/level{map_data['scale']}_{relative_x},{relative_y}_{map_id}.png"
+        map_image_filename = f"../public/maps/level{map_scale}_{relative_x},{relative_y}_{map_id}.png"
 
         map_image = Image.frombytes("RGBA", (128, 128), bytes(image_bytes))
         map_image = map_image.resize((1024, 1024), resample=Image.NEAREST)
         map_image.save(map_image_filename, optimize=True)
 
-        processed_maps["level"+str(map_data["scale"])].append({
+        processed_maps["level"+str(map_scale)].append({
             "x": relative_x,
             "y": relative_y,
             "file": map_image_filename,
