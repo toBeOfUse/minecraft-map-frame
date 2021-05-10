@@ -1,9 +1,9 @@
-"""this script expects to be in the same folder as files with the naming scheme
-map_00.dat (where any number can stand in for the 00); such files can be found in the
-"data" folder of your minecraft level directory. it then takes those files, generates
-pngs that depict the maps that they represent, and places those pngs in the
-"public/maps" folder of this repository, also placing metadata about them in a json
-file in the "src/mapdata" directory."""
+"""this script expects to be in the same folder as a "put_raw_data_here" directory
+with files with the naming scheme map_00.dat (where any number can stand in for the
+00); such files can be found in the "data" folder where your minecraft level is
+stored. it then takes those files, generates pngs that depict the maps that they
+represent, and places those pngs in the "public/maps" folder of this repository, also
+placing metadata about them in a json file in the "src/mapdata" directory."""
 
 from PIL import Image
 import json
@@ -39,7 +39,7 @@ map_file_re = re.compile(r"map_(\d+).dat")
 
 processed_maps = defaultdict(list)
 
-for file in Path('.').glob("map_*.dat"):
+for file in Path('./put_raw_data_here/').glob("map_*.dat"):
 
     with open(file, "rb") as data_file:
         raw_data = gzip.decompress(data_file.read())
@@ -83,10 +83,10 @@ for file in Path('.').glob("map_*.dat"):
             "blank_pixels": blanks_encountered
         })
 
-        print("converted "+str(file))
+        print("converted "+file.name)
 
     else:
-        print(str(file)+" was mostly blank")
+        print(file.name+" was mostly blank")
 
 print("removing redundant maps...")
 
