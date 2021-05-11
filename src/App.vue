@@ -1,18 +1,15 @@
 <template>
-    <div id="app" :class="zoomedIn ? 'appZoomedIn' : 'appZoomedOut'">
-        <span v-if="!zoomedIn && outliningSubMaps">Click within an outlined area to Zoom</span>
+    <div id="app" class="appZoomedIn">
+        <span v-if="zoomLevel !== 0 && outliningSubMaps"
+            >Click within an outlined area to Zoom</span
+        >
         <div
+            ref="map"
             class="mapContainer"
             :class="pannable ? '' : 'mapContainerNonPannable'"
             :style="{
-                width: edgeLength + 'px',
-                height: edgeLength + 'px',
-                ...(zoomedIn
-                    ? {
-                          left: zoomedInPos.left + 'px',
-                          top: zoomedInPos.top + 'px',
-                      }
-                    : zoomedOutPos),
+                ...fullMapDimensions,
+                ...fullMapPosPx,
             }"
             @click="handleMouseClick"
             @mousemove="handleMouseMove"
@@ -21,14 +18,24 @@
             @touchstart="startPanning"
             @mouseup="panning = false"
             @touchend="panning = false"
+            @touchcancel="panning = false"
             @mouseenter="mouseOverMap = true"
-            @mouseleave="mouseOverMap = false"
+            @mouseleave="
+                mouseOverMap = false;
+                panning = false;
+            "
         >
             <img
-                ref="map"
-                id="map"
-                :src="'maps/' + this.availableMaps.level3.find((m) => m.x === 0 && m.y === 0).file"
-                :style="{ opacity: zoomedIn ? 0.3 : 1 }"
+                v-for="map in availableMaps.level3"
+                :key="map.file"
+                :src="'maps/' + map.file"
+                :style="{
+                    opacity: zoomLevel == 0 ? 0.3 : 1,
+                    width: edgeLength + 'px',
+                    height: edgeLength + 'px',
+                    ...getMapPosPx(map, 3),
+                }"
+                class="subMap"
             />
             <img
                 v-for="subMap in currentSubMaps"
@@ -36,11 +43,11 @@
                 :src="`maps/${subMap.file}`"
                 class="subMap"
                 :style="{
-                    ...getSubMapPos(subMap),
-                    width: '12.5%',
-                    height: '12.5%',
-                    visiblity: zoomedIn ? '' : 'hidden',
-                    opacity: zoomedIn ? 1 : 0,
+                    ...getMapPosPx(subMap, 0),
+                    width: subMapEdgeLength + 'px',
+                    height: subMapEdgeLength + 'px',
+                    visiblity: zoomLevel == 0 ? '' : 'hidden',
+                    opacity: zoomLevel == 0 ? 1 : 0,
                 }"
             />
             <transition name="fade">
@@ -50,20 +57,23 @@
                     :subMapBorderWidth="subMapBorderWidth"
                     :edgeLength="edgeLength"
                     :subMaps="currentSubMaps"
+                    :style="getOutlinesPos(this.centerMap, 3)"
                 />
             </transition>
-            <div
-                class="mapMarker"
-                :style="{ left: location.x + '%', top: location.y + '%' }"
-                v-for="(location, i) in currentPointsOfInterest"
-                :key="location.text"
-            >
-                <div class="glowything"></div>
-                <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
-                <span class="caption" :style="captionPos.length && captionPos[i]" ref="caption">
-                    {{ location.text }}
-                </span>
-            </div>
+            <template v-if="false">
+                <div
+                    class="mapMarker"
+                    :style="{ left: location.x + '%', top: location.y + '%' }"
+                    v-for="(location, i) in currentPointsOfInterest"
+                    :key="location.x + ',' + location.y"
+                >
+                    <div class="glowything"></div>
+                    <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
+                    <span class="caption" :style="captionPos.length && captionPos[i]" ref="caption">
+                        {{ location.text }}
+                    </span>
+                </div>
+            </template>
         </div>
         <span v-if="mouseOverMap && !deployed" id="cornerDisplay">
             {{ mouseX.toFixed(2) + ", " + mouseY.toFixed(2) }}
@@ -73,13 +83,13 @@
                 right: '50px',
                 top: '50px',
             }"
-            :src="zoomedIn ? 'zoomout.svg' : 'zoom.svg'"
+            :src="zoomLevel == 0 ? 'zoomout.svg' : 'zoom.svg'"
             id="zoomButton"
             @click="
-                if (!zoomedIn) {
+                if (zoomLevel !== 0) {
                     outliningSubMaps = true;
                 } else {
-                    zoomedIn = false;
+                    zoomLevel = 3;
                     outliningSubMaps = false;
                     pannable = false;
                 }
@@ -105,10 +115,10 @@ export default {
         mouseX: 0,
         mouseY: 0,
         captionPos: [],
-        zoomedIn: false,
-        zoomedInPos: [-1, -1],
+        zoomLevel: 3,
+        fullMapPos: { left: 0, top: 0 },
         outliningSubMaps: false,
-        pannable: false,
+        pannable: true,
         panning: false,
         lastPanningX: -1,
         lastPanningY: -1
@@ -118,6 +128,19 @@ export default {
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
         }
+        this.fullMapPos = this.getPosCenteredOn([0, 0]);
+
+        const minX = Math.min(...this.availableMaps.level3.map(m => m.x));
+        const minY = Math.min(...this.availableMaps.level3.map(m => m.y));
+
+        console.log("rightmost level 3 map is at", minX);
+        console.log("uppermost level 3 map is at", minY);
+        console.log("our map dimensions are", this.fullMapDimensions);
+        console.log("positioning our map at", this.fullMapPos);
+        console.log(
+            "we're trying to center the level 3 map at 0,0, which has the position within the full map of",
+            this.getMapPosPx(this.centerMap, 3)
+        );
     },
     methods: {
         handleMouseMove(event) {
@@ -125,7 +148,7 @@ export default {
             this.mouseX = ((event.pageX - mapBounds.left) / mapBounds.width) * 100;
             this.mouseY = ((event.pageY - mapBounds.top) / mapBounds.height) * 100;
 
-            if (this.zoomedIn && this.panning) {
+            if (this.panning) {
                 if (event.touches && event.touches.length > 1) {
                     return;
                 }
@@ -135,15 +158,15 @@ export default {
 
                 const bounds = this.currentPanningBounds;
 
-                this.zoomedInPos.left += newX - this.lastPanningX;
-                this.zoomedInPos.left = Math.max(
-                    Math.min(bounds.upperXBound, this.zoomedInPos.left),
+                this.fullMapPos.left += newX - this.lastPanningX;
+                this.fullMapPos.left = Math.max(
+                    Math.min(bounds.upperXBound, this.fullMapPos.left),
                     bounds.lowerXBound
                 );
 
-                this.zoomedInPos.top += newY - this.lastPanningY;
-                this.zoomedInPos.top = Math.max(
-                    Math.min(bounds.upperYBound, this.zoomedInPos.top),
+                this.fullMapPos.top += newY - this.lastPanningY;
+                this.fullMapPos.top = Math.max(
+                    Math.min(bounds.upperYBound, this.fullMapPos.top),
                     bounds.lowerYBound
                 );
 
@@ -152,7 +175,7 @@ export default {
             }
         },
         startPanning(event) {
-            if (this.zoomedIn) {
+            if (this.pannable) {
                 if (event.touches && event.touches.length > 1) {
                     return;
                 }
@@ -178,11 +201,11 @@ export default {
                 );
                 navigator.clipboard.writeText(coords);
             }
-            if (this.outliningSubMaps && !this.zoomedIn) {
+            if (this.outliningSubMaps && !this.zoomLevel == 0) {
                 const [xPos, yPos] = [this.mouseX, this.mouseY].map(c => Math.floor(c / (100 / 8)));
-                if (this.subMapExistsAt(xPos, yPos)) {
-                    this.zoomedIn = true;
-                    this.zoomedInPos = this.getZoomedInPos([xPos, yPos]);
+                if (this.mapExistsAt(xPos, yPos, 0)) {
+                    this.zoomLevel = 0;
+                    this.fullMapPos = this.getPosCenteredOn([xPos, yPos], 0);
                     setTimeout(() => (this.pannable = true), 1000);
                 }
             }
@@ -218,41 +241,51 @@ export default {
             }
             this.captionPos = newCaptionPos;
         },
-        subMapExistsAt(x, y) {
-            return this.currentSubMaps.some(m => m.x === x && m.y === y);
-        },
-        getZoomedInPos(subMapCoords) {
-            // takes an [x, y] array specifying a level 0 submap. returns the pixel
+        getPosCenteredOn(mapCoords, level = this.zoomLevel) {
+            // takes an [x, y] array specifying a map. returns the pixel
             // values for the left and top css properties that, when given to the
-            // main map, will center that submap.
-            if (this.zoomedIn) {
-                return {
-                    left:
-                        -this.subMapEdgeLength * subMapCoords[0] +
-                        (this.windowWidth - this.subMapEdgeLength) / 2,
-                    top:
-                        -this.subMapEdgeLength * subMapCoords[1] +
-                        (this.windowHeight - this.subMapEdgeLength) / 2
-                };
-            } else {
-                return {};
-            }
+            // full map, will center that map.
+            const { x, y } = this.getMapPos({ x: mapCoords[0], y: mapCoords[1] }, level);
+            const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
+            return {
+                left: -x + (this.windowWidth - relevantEdgeLength) / 2,
+                top: -y + (this.windowHeight - relevantEdgeLength) / 2
+            };
         },
-        getSubMapPos(map) {
-            let [left, top] = [map.x * 12.5 + "%", map.y * 12.5 + "%"];
-            return { left, top };
+        getMapPos(map, level) {
+            const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
+            const minCoords = this.scaledLowestMapCoords;
+
+            const x = map.x * relevantEdgeLength - minCoords.x * relevantEdgeLength;
+            const y = map.y * relevantEdgeLength - minCoords.y * relevantEdgeLength;
+
+            return { x, y };
         },
-        subMapHasAdjacent(x, y, dx, dy) {
+        getOutlinesPos(map, level) {
+            const mapPos = this.getMapPos(map, level);
+            return {
+                left: mapPos.x - this.subMapBorderWidth + "px",
+                top: mapPos.y - this.subMapBorderWidth + "px"
+            };
+        },
+        getMapPosPx(map, level) {
+            const pos = this.getMapPos(map, level);
+            return { left: pos.x + "px", top: pos.y + "px" };
+        },
+        mapExistsAt(x, y, level) {
+            return this.availableMaps["level" + level].some(m => m.x === x && m.y === y);
+        },
+        relativeCoordsMapExistsAt(x, y, dx, dy, level = this.zoomLevel) {
             const [checkX, checkY] = [x + dx, y + dy];
-            return this.subMapExistsAt(checkX, checkY);
+            return this.mapExistsAt(checkX, checkY, level);
         }
     },
     computed: {
         edgeLength() {
             if (this.windowHeight > this.windowWidth) {
-                return 0.95 * this.windowWidth * (this.zoomedIn ? 7 : 1);
+                return 0.95 * this.windowWidth * (this.zoomLevel == 0 ? 8 : 1);
             } else {
-                return 0.9 * this.windowHeight * (this.zoomedIn ? 7 : 1);
+                return 0.9 * this.windowHeight * (this.zoomLevel == 0 ? 8 : 1);
             }
         },
         subMapEdgeLength() {
@@ -260,6 +293,17 @@ export default {
         },
         subMapBorderWidth() {
             return 3;
+        },
+        centerMap() {
+            return this.availableMaps.level3.find(m => m.x === 0 && m.y === 0);
+        },
+        fullMapDimensions() {
+            const exes = this.availableMaps.level3.map(m => m.x);
+            const whys = this.availableMaps.level3.map(m => m.y);
+            return {
+                width: (Math.max(...exes) + 1 - Math.min(...exes)) * this.edgeLength + "px",
+                height: (Math.max(...whys) + 1 - Math.min(...whys)) * this.edgeLength + "px"
+            };
         },
         currentPointsOfInterest() {
             // TODO: filter points of interest by proximity to zoomed-in area?
@@ -269,50 +313,56 @@ export default {
                 return pointsOfInterest.level3;
             }
         },
-        currentlyFocusedMap() {
+        lowestMapCoords() {
+            // always for the level 3 maps
+            let minX = Math.min(...this.availableMaps.level3.map(m => m.x));
+            let minY = Math.min(...this.availableMaps.level3.map(m => m.y));
+            return { x: minX, y: minY };
+        },
+        scaledLowestMapCoords() {
+            return {
+                x: this.lowestMapCoords.x * (this.zoomLevel == 0 ? 8 : 1),
+                y: this.lowestMapCoords.y * (this.zoomLevel == 0 ? 8 : 1)
+            };
+        },
+        currentlyCenteredMap() {
+            const relevantEdgeLength =
+                this.zoomLevel == 0 ? this.subMapEdgeLength : this.edgeLength;
             const x = Math.floor(
-                (this.windowWidth / 2 - this.zoomedInPos.left) / this.subMapEdgeLength
+                (-this.fullMapPos.left + this.windowWidth / 2) / relevantEdgeLength
             );
             const y = Math.floor(
-                (this.windowHeight / 2 - this.zoomedInPos.top) / this.subMapEdgeLength
+                (-this.fullMapPos.top + this.windowHeight / 2) / relevantEdgeLength
             );
-            return [x, y];
+            return [x + this.scaledLowestMapCoords.x, y + this.scaledLowestMapCoords.y];
         },
         currentPanningBounds() {
-            const focused = this.currentlyFocusedMap;
+            const focused = this.currentlyCenteredMap;
             let lowerXBound;
-            if (this.subMapHasAdjacent(...focused, 1, 0)) {
-                lowerXBound = -Infinity;
-            } else if (
-                this.subMapHasAdjacent(...focused, 0, 1) &&
-                this.subMapHasAdjacent(...focused, 1, 1)
-            ) {
+            if (this.relativeCoordsMapExistsAt(...focused, 1, 0)) {
                 lowerXBound = -Infinity;
             } else {
-                lowerXBound = this.getZoomedInPos(focused).left;
+                lowerXBound = this.getPosCenteredOn(focused).left;
             }
-            const upperXBound = this.subMapHasAdjacent(...focused, -1, 0)
+            const upperXBound = this.relativeCoordsMapExistsAt(...focused, -1, 0)
                 ? Infinity
-                : this.getZoomedInPos(focused).left;
-            const lowerYBound = this.subMapHasAdjacent(...focused, 0, 1)
+                : this.getPosCenteredOn(focused).left;
+            const lowerYBound = this.relativeCoordsMapExistsAt(...focused, 0, 1)
                 ? -Infinity
-                : this.getZoomedInPos(focused).top;
-            const upperYBound = this.subMapHasAdjacent(...focused, 0, -1)
+                : this.getPosCenteredOn(focused).top;
+            const upperYBound = this.relativeCoordsMapExistsAt(...focused, 0, -1)
                 ? Infinity
-                : this.getZoomedInPos(focused).top;
+                : this.getPosCenteredOn(focused).top;
             return { lowerXBound, upperXBound, lowerYBound, upperYBound };
-        },
-        zoomedOutPos() {
-            return {
-                left: (this.windowWidth - this.edgeLength) / 2 + "px",
-                top: (this.windowHeight - this.edgeLength) / 2 + "px"
-            };
         },
         currentSubMaps() {
             return this.availableMaps.level0.filter(
                 // temporary until we are rendering multiple level 3 maps
                 m => m.x >= 0 && m.x < 8 && m.y >= 0 && m.y < 8
             );
+        },
+        fullMapPosPx() {
+            return { left: this.fullMapPos.left + "px", top: this.fullMapPos.top + "px" };
         }
     },
     mixins: [vueWindowSizeMixin]
@@ -355,13 +405,6 @@ body {
     transition-duration: 1s;
     transition-property: width, height, left, top;
 }
-#map {
-    width: 100%;
-    height: 100%;
-    transition-duration: 2.5s;
-    transition-property: opacity;
-    transition-timing-function: linear;
-}
 #cornerDisplay {
     position: fixed;
     left: 5px;
@@ -371,19 +414,13 @@ body {
     width: 30px;
     height: 30px;
     position: fixed;
+    z-index: 12;
 }
 .subMap {
     position: absolute;
     transition-duration: 1s;
     transition-property: width, height, left, top, visibility, opacity;
-
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-    -khtml-user-select: none; /* Konqueror HTML */
-    -moz-user-select: none; /* Old versions of Firefox */
-    -ms-user-select: none; /* Internet Explorer/Edge */
-    user-select: none; /* Non-prefixed version, currently
-                            supported by Chrome, Edge, Opera and Firefox */
+    user-select: none;
 }
 .mapMarker {
     position: absolute;

@@ -5,10 +5,8 @@
         xmlns="http://www.w3.org/2000/svg"
         :style="{
             position: 'absolute',
-            left: '-' + subMapBorderWidth + 'px',
-            top: '-' + subMapBorderWidth + 'px',
-            width: 'calc(100% + ' + 2 * subMapBorderWidth + 'px)',
-            height: 'calc(100% + ' + 2 * subMapBorderWidth + 'px)',
+            width: edgeLength + 2 * subMapBorderWidth + 'px',
+            height: edgeLength + 2 * subMapBorderWidth + 'px',
         }"
     >
         <template v-for="subMap in subMaps">
@@ -46,7 +44,7 @@ export default {
     methods: {
         subMapHasAdjacent(subMap, dx, dy) {
             // TODO: revist this
-            return this.$parent.subMapHasAdjacent(subMap.x, subMap.y, dx, dy);
+            return this.$parent.relativeCoordsMapExistsAt(subMap.x, subMap.y, dx, dy, 0);
         },
         getSubMapBorders(subMap) {
             const subMapPos = {
