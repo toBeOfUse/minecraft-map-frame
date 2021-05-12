@@ -38,7 +38,7 @@
                 class="subMap"
             />
             <img
-                v-for="subMap in currentSubMaps"
+                v-for="subMap in this.availableMaps.level0"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
                 class="subMap"
@@ -46,8 +46,8 @@
                     ...getMapPosPx(subMap, 0),
                     width: subMapEdgeLength + 'px',
                     height: subMapEdgeLength + 'px',
-                    visiblity: zoomLevel == 0 ? '' : 'hidden',
-                    opacity: zoomLevel == 0 ? 1 : 0,
+                    visiblity: true || zoomLevel == 0 ? '' : 'hidden',
+                    opacity: true || zoomLevel == 0 ? 1 : 0,
                 }"
             />
             <transition name="fade">
@@ -56,8 +56,7 @@
                     :subMapsPerMap="64"
                     :subMapBorderWidth="subMapBorderWidth"
                     :edgeLength="edgeLength"
-                    :subMaps="currentSubMaps"
-                    :style="getOutlinesPos(this.centerMap, 3)"
+                    :subMaps="this.availableMaps.level0"
                 />
             </transition>
             <template v-if="false">
@@ -254,19 +253,11 @@ export default {
         },
         getMapPos(map, level) {
             const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
-            const minCoords = this.scaledLowestMapCoords;
 
-            const x = map.x * relevantEdgeLength - minCoords.x * relevantEdgeLength;
-            const y = map.y * relevantEdgeLength - minCoords.y * relevantEdgeLength;
+            const x = (map.x - this.lowestMapCoords.x * (level == 0 ? 8 : 1)) * relevantEdgeLength;
+            const y = (map.y - this.lowestMapCoords.y * (level == 0 ? 8 : 1)) * relevantEdgeLength;
 
             return { x, y };
-        },
-        getOutlinesPos(map, level) {
-            const mapPos = this.getMapPos(map, level);
-            return {
-                left: mapPos.x - this.subMapBorderWidth + "px",
-                top: mapPos.y - this.subMapBorderWidth + "px"
-            };
         },
         getMapPosPx(map, level) {
             const pos = this.getMapPos(map, level);

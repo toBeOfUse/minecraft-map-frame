@@ -1,12 +1,14 @@
 <template>
     <svg
         id="subMapOutlineOverlay"
-        :viewBox="`0 0 ${edgeLength + subMapBorderWidth * 2} ${edgeLength + subMapBorderWidth * 2}`"
+        :viewBox="`0 0 ${outlineDimensions.x} ${outlineDimensions.y}`"
         xmlns="http://www.w3.org/2000/svg"
         :style="{
             position: 'absolute',
-            width: edgeLength + 2 * subMapBorderWidth + 'px',
-            height: edgeLength + 2 * subMapBorderWidth + 'px',
+            left: -subMapBorderWidth,
+            top: -subMapBorderWidth,
+            width: outlineDimensions.x,
+            height: outlineDimensions.y,
         }"
     >
         <template v-for="subMap in subMaps">
@@ -47,10 +49,7 @@ export default {
             return this.$parent.relativeCoordsMapExistsAt(subMap.x, subMap.y, dx, dy, 0);
         },
         getSubMapBorders(subMap) {
-            const subMapPos = {
-                x: subMap.x * this.subMapEdgeLength,
-                y: subMap.y * this.subMapEdgeLength
-            };
+            const subMapPos = this.$parent.getMapPos(subMap, 0);
 
             const lines = [];
 
@@ -92,7 +91,7 @@ export default {
                 // if there's a sub-map down and to the right that the bottom border could
                 // intrude upon, don't extend it right:
                 if (this.subMapHasAdjacent(subMap, 1, 1)) {
-                    bottomLine.width -= this.subMapEdgeLength;
+                    bottomLine.width -= this.subMapBorderWidth;
                 }
                 lines.push(bottomLine);
             }
@@ -146,6 +145,20 @@ export default {
     computed: {
         subMapEdgeLength() {
             return this.edgeLength / Math.sqrt(this.subMapsPerMap);
+        },
+        outlineDimensions() {
+            const exes = this.subMaps.map(m => m.x);
+            const whys = this.subMaps.map(m => m.y);
+            return {
+                x:
+                    (Math.max(...exes) - this.$parent.lowestMapCoords.x * 8 + 1) *
+                        this.subMapEdgeLength +
+                    this.subMapBorderWidth * 2,
+                y:
+                    (Math.max(...whys) - this.$parent.lowestMapCoords.y * 8 + 1) *
+                        this.subMapEdgeLength +
+                    this.subMapBorderWidth * 2
+            };
         }
     }
 };
