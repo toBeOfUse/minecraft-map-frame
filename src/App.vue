@@ -1,12 +1,12 @@
 <template>
-    <div id="app" class="appZoomedIn">
+    <div id="app" :class="zoomLevel == 0 ? 'appZoomedIn' : ''">
         <span v-if="zoomLevel !== 0 && outliningSubMaps"
             >Click within an outlined area to Zoom</span
         >
         <div
             ref="map"
             class="mapContainer"
-            :class="pannable ? '' : 'mapContainerNonPannable'"
+            :class="isMidZoom && 'transitiony'"
             :style="{
                 ...fullMapDimensions,
                 ...fullMapPosPx,
@@ -46,33 +46,32 @@
                     ...getMapPosPx(subMap, 0),
                     width: subMapEdgeLength + 'px',
                     height: subMapEdgeLength + 'px',
-                    visiblity: true || zoomLevel == 0 ? '' : 'hidden',
-                    opacity: true || zoomLevel == 0 ? 1 : 0,
+                    visiblity: zoomLevel == 0 ? '' : 'hidden',
+                    opacity: zoomLevel == 0 ? 1 : 0,
                 }"
             />
-            <transition name="fade">
-                <sub-map-outlines
-                    v-if="outliningSubMaps"
-                    :subMapsPerMap="64"
-                    :subMapBorderWidth="subMapBorderWidth"
-                    :edgeLength="edgeLength"
-                    :subMaps="this.availableMaps.level0"
-                />
-            </transition>
-            <template v-if="false">
-                <div
-                    class="mapMarker"
-                    :style="{ left: location.x + '%', top: location.y + '%' }"
-                    v-for="(location, i) in currentPointsOfInterest"
-                    :key="location.x + ',' + location.y"
-                >
-                    <div class="glowything"></div>
-                    <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
-                    <span class="caption" :style="captionPos.length && captionPos[i]" ref="caption">
-                        {{ location.text }}
-                    </span>
-                </div>
-            </template>
+            <sub-map-outlines
+                :subMapsPerMap="64"
+                :subMapBorderWidth="subMapBorderWidth"
+                :edgeLength="edgeLength"
+                :subMaps="this.availableMaps.level0"
+                :style="{
+                    visiblity: outliningSubMaps ? '' : 'hidden',
+                    opacity: outliningSubMaps ? 1 : 0,
+                }"
+            />
+            <div
+                class="mapMarker"
+                :style="getMarkerPos(location)"
+                v-for="(location, i) in currentPointsOfInterest"
+                :key="location.x + ',' + location.y"
+            >
+                <div class="glowything"></div>
+                <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
+                <span class="caption" :style="captionPos.length && captionPos[i]" ref="caption">
+                    {{ location.text }}
+                </span>
+            </div>
         </div>
         <span v-if="mouseOverMap && !deployed" id="cornerDisplay">
             {{ mouseX.toFixed(2) + ", " + mouseY.toFixed(2) }}
@@ -84,15 +83,7 @@
             }"
             :src="zoomLevel == 0 ? 'zoomout.svg' : 'zoom.svg'"
             id="zoomButton"
-            @click="
-                if (zoomLevel !== 0) {
-                    outliningSubMaps = true;
-                } else {
-                    zoomLevel = 3;
-                    outliningSubMaps = false;
-                    pannable = false;
-                }
-            "
+            @click="toggleZoomLevel"
         />
     </div>
 </template>
@@ -115,6 +106,7 @@ export default {
         mouseY: 0,
         captionPos: [],
         zoomLevel: 3,
+        isMidZoom: false,
         fullMapPos: { left: 0, top: 0 },
         outliningSubMaps: false,
         pannable: true,
@@ -132,7 +124,7 @@ export default {
         const minX = Math.min(...this.availableMaps.level3.map(m => m.x));
         const minY = Math.min(...this.availableMaps.level3.map(m => m.y));
 
-        console.log("rightmost level 3 map is at", minX);
+        console.log("lefttmost level 3 map is at", minX);
         console.log("uppermost level 3 map is at", minY);
         console.log("our map dimensions are", this.fullMapDimensions);
         console.log("positioning our map at", this.fullMapPos);
@@ -143,9 +135,11 @@ export default {
     },
     methods: {
         handleMouseMove(event) {
-            const mapBounds = this.$refs.map.getBoundingClientRect();
-            this.mouseX = ((event.pageX - mapBounds.left) / mapBounds.width) * 100;
-            this.mouseY = ((event.pageY - mapBounds.top) / mapBounds.height) * 100;
+            if (!this.deployed) {
+                const eventPos = this.getMapPositionAtViewportPos(event.clientX, event.clientY, 3);
+                this.mouseX = eventPos[0] * 128;
+                this.mouseY = eventPos[1] * 128;
+            }
 
             if (this.panning) {
                 if (event.touches && event.touches.length > 1) {
@@ -187,7 +181,7 @@ export default {
                     : event.touches[0]?.pageY;
             }
         },
-        handleMouseClick() {
+        handleMouseClick(event) {
             if (!this.deployed && navigator.clipboard) {
                 const coords = JSON.stringify(
                     {
@@ -200,13 +194,34 @@ export default {
                 );
                 navigator.clipboard.writeText(coords);
             }
-            if (this.outliningSubMaps && !this.zoomLevel == 0) {
-                const [xPos, yPos] = [this.mouseX, this.mouseY].map(c => Math.floor(c / (100 / 8)));
-                if (this.mapExistsAt(xPos, yPos, 0)) {
+            if (this.outliningSubMaps && this.zoomLevel !== 0) {
+                const [x, y] = this.getMapAtViewportPos(event.clientX, event.clientY, 0);
+                console.log("map at this position was clicked", x, y);
+                if (this.mapExistsAt(x, y, 0)) {
+                    this.isMidZoom = true;
                     this.zoomLevel = 0;
-                    this.fullMapPos = this.getPosCenteredOn([xPos, yPos], 0);
-                    setTimeout(() => (this.pannable = true), 1000);
+                    this.fullMapPos = this.getPosCenteredOn([x, y], 0);
+                    this.$refs.map.addEventListener("transitionend", event => {
+                        if (event.target === event.currentTarget) {
+                            this.isMidZoom = false;
+                        }
+                    });
                 }
+            }
+        },
+        toggleZoomLevel() {
+            if (this.zoomLevel !== 0) {
+                this.outliningSubMaps = true;
+            } else {
+                this.isMidZoom = true;
+                this.zoomLevel = 3;
+                this.outliningSubMaps = false;
+                this.fullMapPos = this.getPosCenteredOn([0, 0]);
+                this.$refs.map.addEventListener("transitionend", event => {
+                    if (event.target === event.currentTarget) {
+                        this.isMidZoom = false;
+                    }
+                });
             }
         },
         positionCaptions() {
@@ -244,23 +259,29 @@ export default {
             // takes an [x, y] array specifying a map. returns the pixel
             // values for the left and top css properties that, when given to the
             // full map, will center that map.
-            const { x, y } = this.getMapPos({ x: mapCoords[0], y: mapCoords[1] }, level);
+            const { x, y } = this.getMapPos(mapCoords, level);
             const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
             return {
                 left: -x + (this.windowWidth - relevantEdgeLength) / 2,
                 top: -y + (this.windowHeight - relevantEdgeLength) / 2
             };
         },
-        getMapPos(map, level) {
+        getMapPos(coords, level) {
             const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
 
-            const x = (map.x - this.lowestMapCoords.x * (level == 0 ? 8 : 1)) * relevantEdgeLength;
-            const y = (map.y - this.lowestMapCoords.y * (level == 0 ? 8 : 1)) * relevantEdgeLength;
+            const x =
+                (coords[0] - this.lowestMapCoords.x * (level == 0 ? 8 : 1)) * relevantEdgeLength;
+            const y =
+                (coords[1] - this.lowestMapCoords.y * (level == 0 ? 8 : 1)) * relevantEdgeLength;
 
             return { x, y };
         },
         getMapPosPx(map, level) {
-            const pos = this.getMapPos(map, level);
+            const pos = this.getMapPos([map.x, map.y], level);
+            return { left: pos.x + "px", top: pos.y + "px" };
+        },
+        getMarkerPos(marker) {
+            const pos = this.getMapPos([marker.x / 128, marker.y / 128], 3);
             return { left: pos.x + "px", top: pos.y + "px" };
         },
         mapExistsAt(x, y, level) {
@@ -269,6 +290,19 @@ export default {
         relativeCoordsMapExistsAt(x, y, dx, dy, level = this.zoomLevel) {
             const [checkX, checkY] = [x + dx, y + dy];
             return this.mapExistsAt(checkX, checkY, level);
+        },
+        getMapPositionAtViewportPos(viewportX, viewportY, level) {
+            const relevantEdgeLength = level == 0 ? this.subMapEdgeLength : this.edgeLength;
+            const x = (-this.fullMapPos.left + viewportX) / relevantEdgeLength;
+            const y = (-this.fullMapPos.top + viewportY) / relevantEdgeLength;
+            return [
+                x + this.lowestMapCoords.x * (level == 0 ? 8 : 1),
+                y + this.lowestMapCoords.y * (level == 0 ? 8 : 1)
+            ];
+        },
+        getMapAtViewportPos(viewportX, viewportY, level) {
+            const pos = this.getMapPositionAtViewportPos(viewportX, viewportY, level);
+            return pos.map(Math.floor);
         }
     },
     computed: {
@@ -298,7 +332,7 @@ export default {
         },
         currentPointsOfInterest() {
             // TODO: filter points of interest by proximity to zoomed-in area?
-            if (this.pannable) {
+            if (this.zoomLevel == 0 && !this.isMidZoom) {
                 return pointsOfInterest.level3.concat(pointsOfInterest.level0);
             } else {
                 return pointsOfInterest.level3;
@@ -317,15 +351,11 @@ export default {
             };
         },
         currentlyCenteredMap() {
-            const relevantEdgeLength =
-                this.zoomLevel == 0 ? this.subMapEdgeLength : this.edgeLength;
-            const x = Math.floor(
-                (-this.fullMapPos.left + this.windowWidth / 2) / relevantEdgeLength
+            return this.getMapAtViewportPos(
+                this.windowWidth / 2,
+                this.windowHeight / 2,
+                this.zoomLevel
             );
-            const y = Math.floor(
-                (-this.fullMapPos.top + this.windowHeight / 2) / relevantEdgeLength
-            );
-            return [x + this.scaledLowestMapCoords.x, y + this.scaledLowestMapCoords.y];
         },
         currentPanningBounds() {
             const focused = this.currentlyCenteredMap;
@@ -360,13 +390,18 @@ export default {
 };
 </script>
 
-<style>
+<style lang="scss">
 @font-face {
     font-family: "andada";
     src: url("/andada-regular-webfont.woff2") format("woff2"),
         url("/andada-regular-webfont.woff") format("woff");
     font-weight: normal;
     font-style: normal;
+}
+
+@mixin standard-transitions {
+    transition-duration: 1s;
+    transition-property: width, height, left, top, opacity, visibility;
 }
 
 html,
@@ -384,17 +419,14 @@ body {
     text-align: center;
     font-family: "andada", serif;
 }
-.appZoomedOut {
-    height: 100%;
-    position: absolute;
-    width: 100%;
-}
 .mapContainer {
     position: absolute;
 }
-.mapContainerNonPannable {
-    transition-duration: 1s;
-    transition-property: width, height, left, top;
+.transitiony {
+    @include standard-transitions;
+}
+#subMapOutlineOverlay {
+    @include standard-transitions;
 }
 #cornerDisplay {
     position: fixed;
@@ -409,16 +441,15 @@ body {
 }
 .subMap {
     position: absolute;
-    transition-duration: 1s;
-    transition-property: width, height, left, top, visibility, opacity;
     user-select: none;
+    @include standard-transitions;
 }
 .mapMarker {
     position: absolute;
     height: 25px;
     width: 25px;
-    transition: opacity 100ms, width 1s, height 1s;
     z-index: 8;
+    @include standard-transitions;
 }
 .appZoomedIn .mapMarker {
     height: 40px;
@@ -465,13 +496,5 @@ body {
 }
 .mapMarker:hover .glowything {
     opacity: 0.6;
-}
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 1s;
-}
-.fade-enter,
-.fade-leave-to {
-    opacity: 0;
 }
 </style>

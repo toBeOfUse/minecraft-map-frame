@@ -49,7 +49,7 @@ export default {
             return this.$parent.relativeCoordsMapExistsAt(subMap.x, subMap.y, dx, dy, 0);
         },
         getSubMapBorders(subMap) {
-            const subMapPos = this.$parent.getMapPos(subMap, 0);
+            const subMapPos = this.$parent.getMapPos([subMap.x, subMap.y], 0);
 
             const lines = [];
 

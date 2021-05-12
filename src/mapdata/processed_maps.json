@@ -73,12 +73,6 @@
             "blank_pixels": 0
         },
         {
-            "x": 5,
-            "y": 8,
-            "file": "level0_5,8_70.png",
-            "blank_pixels": 417
-        },
-        {
             "x": 6,
             "y": 3,
             "file": "level0_6,3_44.png",
