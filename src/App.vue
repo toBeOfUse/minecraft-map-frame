@@ -121,7 +121,8 @@ export default {
         pannable: true,
         panning: false,
         lastPanningX: -1,
-        lastPanningY: -1
+        lastPanningY: -1,
+        lastZoomedInOnSubMap: [NaN, NaN]
     }),
     mounted() {
         // this.positionCaptions();
@@ -207,13 +208,16 @@ export default {
                 const [x, y] = this.getMapAtViewportPos(event.clientX, event.clientY, 0);
                 console.log("map at this position was clicked", x, y);
                 if (this.mapExistsAt(x, y, 0)) {
+                    this.lastZoomedInOnSubMap = [x, y];
                     this.isMidZoom = true;
-                    this.zoomLevel = 0;
-                    this.fullMapPos = this.getPosCenteredOn([x, y], 0);
-                    this.$refs.map.addEventListener("transitionend", event => {
-                        if (event.target === event.currentTarget) {
-                            this.isMidZoom = false;
-                        }
+                    requestAnimationFrame(() => {
+                        this.zoomLevel = 0;
+                        this.fullMapPos = this.getPosCenteredOn([x, y], 0);
+                        this.$refs.map.addEventListener("transitionend", event => {
+                            if (event.target === event.currentTarget) {
+                                this.isMidZoom = false;
+                            }
+                        });
                     });
                 }
             }
@@ -223,13 +227,15 @@ export default {
                 this.outliningSubMaps = true;
             } else {
                 this.isMidZoom = true;
-                this.zoomLevel = 3;
-                this.outliningSubMaps = false;
-                this.fullMapPos = this.getPosCenteredOn([0, 0]);
-                this.$refs.map.addEventListener("transitionend", event => {
-                    if (event.target === event.currentTarget) {
-                        this.isMidZoom = false;
-                    }
+                requestAnimationFrame(() => {
+                    this.zoomLevel = 3;
+                    this.outliningSubMaps = false;
+                    this.fullMapPos = this.getPosCenteredOn([0, 0]);
+                    this.$refs.map.addEventListener("transitionend", event => {
+                        if (event.target === event.currentTarget) {
+                            this.isMidZoom = false;
+                        }
+                    });
                 });
             }
         },
@@ -348,11 +354,30 @@ export default {
             };
         },
         currentPointsOfInterest() {
-            // TODO: filter points of interest by proximity to zoomed-in area?
-            if (this.zoomLevel == 0 && !this.isMidZoom) {
-                return pointsOfInterest.level3.concat(pointsOfInterest.level0);
+            if (this.isMidZoom) {
+                return pointsOfInterest.level3.concat(
+                    pointsOfInterest.level0.filter(p =>
+                        this.currentSubMapIsland.has(
+                            Math.floor((p.x / 128) * 8) + "," + Math.floor((p.y / 128) * 8)
+                        )
+                    )
+                );
+            } else if (this.zoomLevel == 0 && !this.isMidZoom) {
+                return pointsOfInterest.level3
+                    .concat(pointsOfInterest.level0)
+                    .filter(p =>
+                        this.currentSubMapIsland.has(
+                            Math.floor((p.x / 128) * 8) + "," + Math.floor((p.y / 128) * 8)
+                        )
+                    );
             } else {
-                return pointsOfInterest.level3;
+                return pointsOfInterest.level3.filter(
+                    p =>
+                        p.x / 128 > this.currentlyCenteredMap[0] &&
+                        p.x / 128 < this.currentlyCenteredMap[0] + 1 &&
+                        p.y / 128 > this.currentlyCenteredMap[1] &&
+                        p.y / 128 < this.currentlyCenteredMap[1] + 1
+                );
             }
         },
         lowestMapCoords() {
@@ -407,6 +432,34 @@ export default {
         },
         fullMapPosPx() {
             return { left: this.fullMapPos.left + "px", top: this.fullMapPos.top + "px" };
+        },
+        currentSubMapIsland() {
+            const result = new Set();
+            const islandSearch = startingMap => {
+                const hashable = startingMap[0] + "," + startingMap[1];
+                if (!result.has(hashable)) {
+                    result.add(hashable);
+                    if (this.mapExistsAt(startingMap[0] - 1, startingMap[1], 0)) {
+                        islandSearch([startingMap[0] - 1, startingMap[1]]);
+                    }
+                    if (this.mapExistsAt(startingMap[0], startingMap[1] - 1, 0)) {
+                        islandSearch([startingMap[0] - 1, startingMap[1] - 1]);
+                    }
+                    if (this.mapExistsAt(startingMap[0] + 1, startingMap[1], 0)) {
+                        islandSearch([startingMap[0] + 1, startingMap[1]]);
+                    }
+                    if (this.mapExistsAt(startingMap[0], startingMap[1] + 1, 0)) {
+                        islandSearch([startingMap[0], startingMap[1] + 1]);
+                    }
+                }
+            };
+
+            if (this.lastZoomedInOnSubMap[0] !== this.lastZoomedInOnSubMap[0]) {
+                return null;
+            } else {
+                islandSearch(this.lastZoomedInOnSubMap);
+                return result;
+            }
         }
     },
     mixins: [vueWindowSizeMixin]
