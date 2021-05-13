@@ -368,13 +368,13 @@ export default {
         },
         currentPointsOfInterest() {
             if (this.isMidZoom) {
-                return pointsOfInterest.level3.concat(
-                    pointsOfInterest.level0.filter(p =>
+                return pointsOfInterest.level3
+                    .concat(pointsOfInterest.level0)
+                    .filter(p =>
                         this.currentSubMapIsland.has(
                             Math.floor((p.x / 128) * 8) + "," + Math.floor((p.y / 128) * 8)
                         )
-                    )
-                );
+                    );
             } else if (this.zoomLevel == 0 && !this.isMidZoom) {
                 return pointsOfInterest.level3
                     .concat(pointsOfInterest.level0)
