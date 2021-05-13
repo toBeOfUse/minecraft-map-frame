@@ -1,5 +1,6 @@
 /public/maps/*.png
 /raw_data_processing/put_raw_data_here/*.dat
+/raw_data_processing/skip_these_maps.json
 
 .DS_Store
 node_modules

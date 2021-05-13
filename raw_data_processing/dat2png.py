@@ -39,7 +39,19 @@ map_file_re = re.compile(r"map_(\d+).dat")
 
 processed_maps = defaultdict(list)
 
+try:
+    with open("./skip_these_maps.json") as blacklist_file:
+        skips = json.load(blacklist_file)["ids"]
+except:
+    skips = []
+
 for file in Path('./put_raw_data_here/').glob("map_*.dat"):
+
+    map_id_match = map_file_re.search(str(file))
+    map_id = map_id_match[1] or "no_id"
+    if int(map_id) in skips:
+        print("skipping map "+str(file)+" in accordance with config file")
+        continue
 
     with open(file, "rb") as data_file:
         raw_data = gzip.decompress(data_file.read())

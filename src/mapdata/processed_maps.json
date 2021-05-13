@@ -32,12 +32,6 @@
         },
         {
             "x": 1,
-            "y": -1,
-            "file": "level0_1,-1_27.png",
-            "blank_pixels": 3355
-        },
-        {
-            "x": 1,
             "y": 0,
             "file": "level0_1,0_37.png",
             "blank_pixels": 378
@@ -111,6 +105,12 @@
             "blank_pixels": 16
         },
         {
+            "x": -1,
+            "y": 1,
+            "file": "level3_-1,1_85.png",
+            "blank_pixels": 1
+        },
+        {
             "x": 0,
             "y": -1,
             "file": "level3_0,-1_52.png",
@@ -120,7 +120,7 @@
             "x": 0,
             "y": 0,
             "file": "level3_0,0_22.png",
-            "blank_pixels": 8
+            "blank_pixels": 6
         },
         {
             "x": 0,
@@ -130,9 +130,21 @@
         },
         {
             "x": 1,
+            "y": -1,
+            "file": "level3_1,-1_77.png",
+            "blank_pixels": 1
+        },
+        {
+            "x": 1,
             "y": 0,
             "file": "level3_1,0_18.png",
-            "blank_pixels": 58
+            "blank_pixels": 16
+        },
+        {
+            "x": 1,
+            "y": 1,
+            "file": "level3_1,1_81.png",
+            "blank_pixels": 6
         }
     ],
     "level2": [
