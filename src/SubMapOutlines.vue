@@ -1,15 +1,8 @@
 <template>
     <svg
         id="subMapOutlineOverlay"
-        :viewBox="`0 0 ${outlineDimensions.x} ${outlineDimensions.y}`"
+        :viewBox="`0 0 ${viewBoxDimensions.x} ${viewBoxDimensions.y}`"
         xmlns="http://www.w3.org/2000/svg"
-        :style="{
-            position: 'absolute',
-            left: -subMapBorderWidth,
-            top: -subMapBorderWidth,
-            width: outlineDimensions.x,
-            height: outlineDimensions.y,
-        }"
     >
         <template v-for="subMap in subMaps">
             <rect
@@ -24,14 +17,10 @@
 <script>
 export default {
     props: {
-        edgeLength: {
-            type: Number,
-            required: true
-        },
-        // objects containing at least the keys "x", "y", and a "file" key that acts
-        // as a unique id
         subMaps: {
             type: Array,
+            // objects containing at least the keys "x", "y", and a "file" key that acts
+            // as a unique id
             required: true
         },
         subMapsPerMap: {
@@ -49,14 +38,19 @@ export default {
             return this.$parent.relativeCoordsMapExistsAt(subMap.x, subMap.y, dx, dy, 0);
         },
         getSubMapBorders(subMap) {
-            const subMapPos = this.$parent.getMapPos([subMap.x, subMap.y], 0);
+            const subMapPos = {
+                x: subMap.x * this.subMapEdgeLength - this.$parent.lowestMapCoords.x,
+                y: subMap.y * this.subMapEdgeLength - this.$parent.lowestMapCoords.y
+            };
 
             const lines = [];
+
+            const workingEdgeLength = this.subMapEdgeLength;
 
             if (!this.subMapHasAdjacent(subMap, 0, -1)) {
                 const topLine = {
                     id: subMap.file + "top",
-                    width: this.subMapEdgeLength + this.subMapBorderWidth * 2,
+                    width: workingEdgeLength + this.subMapBorderWidth * 2,
                     height: this.subMapBorderWidth,
                     ...subMapPos
                 };
@@ -77,10 +71,10 @@ export default {
             if (!this.subMapHasAdjacent(subMap, 0, 1)) {
                 const bottomLine = {
                     id: subMap.file + "bottom",
-                    width: this.subMapEdgeLength + this.subMapBorderWidth * 2,
+                    width: workingEdgeLength + this.subMapBorderWidth * 2,
                     height: this.subMapBorderWidth,
                     x: subMapPos.x,
-                    y: subMapPos.y + this.subMapEdgeLength + this.subMapBorderWidth
+                    y: subMapPos.y + workingEdgeLength + this.subMapBorderWidth
                 };
                 // if there's a sub-map down and to the left that the bottom border could
                 // intrude upon, don't extend it left:
@@ -100,7 +94,7 @@ export default {
                 const leftLine = {
                     id: subMap.file + "left",
                     width: this.subMapBorderWidth,
-                    height: this.subMapEdgeLength + this.subMapBorderWidth * 2,
+                    height: workingEdgeLength + this.subMapBorderWidth * 2,
                     ...subMapPos
                 };
                 // if there's a sub-map up and to the left that the left border could
@@ -121,8 +115,8 @@ export default {
                 const rightLine = {
                     id: subMap.file + "right",
                     width: this.subMapBorderWidth,
-                    height: this.subMapEdgeLength + this.subMapBorderWidth * 2,
-                    x: subMapPos.x + this.subMapEdgeLength + this.subMapBorderWidth,
+                    height: workingEdgeLength + this.subMapBorderWidth * 2,
+                    x: subMapPos.x + workingEdgeLength + this.subMapBorderWidth,
                     y: subMapPos.y
                 };
                 // if there's a sub-map up and to the right that the right border could
@@ -144,19 +138,19 @@ export default {
     },
     computed: {
         subMapEdgeLength() {
-            return this.edgeLength / Math.sqrt(this.subMapsPerMap);
+            return 1 / Math.sqrt(this.subMapsPerMap);
         },
-        outlineDimensions() {
-            const exes = this.subMaps.map(m => m.x);
-            const whys = this.subMaps.map(m => m.y);
+        viewBoxDimensions() {
             return {
                 x:
-                    (Math.max(...exes) - this.$parent.lowestMapCoords.x * 8 + 1) *
-                        this.subMapEdgeLength +
+                    this.$parent.highestMapCoords.x -
+                    this.$parent.lowestMapCoords.x +
+                    1 +
                     this.subMapBorderWidth * 2,
                 y:
-                    (Math.max(...whys) - this.$parent.lowestMapCoords.y * 8 + 1) *
-                        this.subMapEdgeLength +
+                    this.$parent.highestMapCoords.y -
+                    this.$parent.lowestMapCoords.y +
+                    1 +
                     this.subMapBorderWidth * 2
             };
         }

@@ -30,7 +30,13 @@
                 :key="map.file"
                 :src="'maps/' + map.file"
                 :style="{
-                    opacity: zoomLevel == 0 ? 0.3 : 1,
+                    opacity:
+                        // TODO: revisit this experimental kludge
+                        zoomLevel == 0
+                            ? 0.3
+                            : map.x == currentlyCenteredMap[0] && map.y == currentlyCenteredMap[1]
+                            ? 1
+                            : 0.7,
                     width: edgeLength + 'px',
                     height: edgeLength + 'px',
                     ...getMapPosPx(map, 3),
@@ -53,11 +59,15 @@
             <sub-map-outlines
                 :subMapsPerMap="64"
                 :subMapBorderWidth="subMapBorderWidth"
-                :edgeLength="edgeLength"
                 :subMaps="this.availableMaps.level0"
                 :style="{
                     visiblity: outliningSubMaps ? '' : 'hidden',
                     opacity: outliningSubMaps ? 1 : 0,
+                    position: 'absolute',
+                    left: -subMapBorderWidthPx + 'px',
+                    top: -subMapBorderWidthPx + 'px',
+                    width: 'calc(100% + ' + subMapBorderWidthPx * 2 + 'px)',
+                    height: 'calc(100% + ' + subMapBorderWidthPx * 2 + 'px)',
                 }"
             />
             <div
@@ -66,7 +76,6 @@
                 v-for="(location, i) in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
             >
-                <div class="glowything"></div>
                 <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
                 <span class="caption" :style="captionPos.length && captionPos[i]" ref="caption">
                     {{ location.text }}
@@ -317,17 +326,25 @@ export default {
             return this.edgeLength / 8;
         },
         subMapBorderWidth() {
-            return 3;
+            // the sub-map-outlines component uses units where the length of a level
+            // 3 map is always 1, bc its moment-to-moment size is much easier to
+            // control and transition when setting it in pixels from the outside,
+            // rather than calculating the border placement in pixels on the inside;
+            // the sub map border width is here expressed in these units.
+            return 3 / 1000;
+        },
+        subMapBorderWidthPx() {
+            return this.subMapBorderWidth * this.edgeLength;
         },
         centerMap() {
             return this.availableMaps.level3.find(m => m.x === 0 && m.y === 0);
         },
         fullMapDimensions() {
-            const exes = this.availableMaps.level3.map(m => m.x);
-            const whys = this.availableMaps.level3.map(m => m.y);
             return {
-                width: (Math.max(...exes) + 1 - Math.min(...exes)) * this.edgeLength + "px",
-                height: (Math.max(...whys) + 1 - Math.min(...whys)) * this.edgeLength + "px"
+                width:
+                    (this.highestMapCoords.x + 1 - this.lowestMapCoords.x) * this.edgeLength + "px",
+                height:
+                    (this.highestMapCoords.y + 1 - this.lowestMapCoords.y) * this.edgeLength + "px"
             };
         },
         currentPointsOfInterest() {
@@ -343,6 +360,12 @@ export default {
             let minX = Math.min(...this.availableMaps.level3.map(m => m.x));
             let minY = Math.min(...this.availableMaps.level3.map(m => m.y));
             return { x: minX, y: minY };
+        },
+        highestMapCoords() {
+            // always for the level 3 maps
+            let maxX = Math.max(...this.availableMaps.level3.map(m => m.x));
+            let maxY = Math.max(...this.availableMaps.level3.map(m => m.y));
+            return { x: maxX, y: maxY };
         },
         scaledLowestMapCoords() {
             return {
@@ -482,10 +505,10 @@ body {
 .mapMarker:hover .caption {
     opacity: 1;
 }
-.glowything {
+.mapMarker:hover::after {
     border-radius: 50%;
-    opacity: 0;
-    background-color: #00c100;
+    opacity: 0.6;
+    background-color: #1be91b;
     filter: blur(10px);
     width: 35px;
     height: 35px;
@@ -493,8 +516,7 @@ body {
     left: 0;
     top: 0;
     transform: translate(-50%, -50%);
-}
-.mapMarker:hover .glowything {
-    opacity: 0.6;
+    mix-blend-mode: screen;
+    content: "";
 }
 </style>
