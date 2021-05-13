@@ -23,7 +23,7 @@ export default {
             // as a unique id
             required: true
         },
-        subMapsPerMap: {
+        zoomLevel: {
             type: Number,
             required: true
         },
@@ -35,7 +35,13 @@ export default {
     methods: {
         subMapHasAdjacent(subMap, dx, dy) {
             // TODO: revist this
-            return this.$parent.relativeCoordsMapExistsAt(subMap.x, subMap.y, dx, dy, 0);
+            return this.$parent.relativeCoordsMapExistsAt(
+                subMap.x,
+                subMap.y,
+                dx,
+                dy,
+                this.zoomLevel
+            );
         },
         getSubMapBorders(subMap) {
             const subMapPos = {
@@ -138,7 +144,7 @@ export default {
     },
     computed: {
         subMapEdgeLength() {
-            return 1 / Math.sqrt(this.subMapsPerMap);
+            return 1 / (this.zoomLevel == 3 ? 1 : 8);
         },
         viewBoxDimensions() {
             return {

@@ -30,13 +30,7 @@
                 :key="map.file"
                 :src="'maps/' + map.file"
                 :style="{
-                    opacity:
-                        // TODO: revisit this experimental kludge
-                        zoomLevel == 0
-                            ? 0.3
-                            : map.x == currentlyCenteredMap[0] && map.y == currentlyCenteredMap[1]
-                            ? 1
-                            : 0.7,
+                    opacity: getLevel3MapOpacity(map),
                     width: edgeLength + 'px',
                     height: edgeLength + 'px',
                     ...getMapPosPx(map, 3),
@@ -57,7 +51,7 @@
                 }"
             />
             <sub-map-outlines
-                :subMapsPerMap="64"
+                :zoomLevel="0"
                 :subMapBorderWidth="subMapBorderWidth"
                 :subMaps="this.availableMaps.level0"
                 :style="{
@@ -68,6 +62,18 @@
                     top: -subMapBorderWidthPx + 'px',
                     width: 'calc(100% + ' + subMapBorderWidthPx * 2 + 'px)',
                     height: 'calc(100% + ' + subMapBorderWidthPx * 2 + 'px)',
+                }"
+            />
+            <sub-map-outlines
+                :zoomLevel="3"
+                :subMapBorderWidth="subMapBorderWidth * 5"
+                :subMaps="this.availableMaps.level3"
+                :style="{
+                    position: 'absolute',
+                    left: -subMapBorderWidthPx * 5 + 'px',
+                    top: -subMapBorderWidthPx * 5 + 'px',
+                    width: 'calc(100% + ' + subMapBorderWidthPx * 5 * 2 + 'px)',
+                    height: 'calc(100% + ' + subMapBorderWidthPx * 5 * 2 + 'px)',
                 }"
             />
             <div
@@ -318,6 +324,13 @@ export default {
         getMapAtViewportPos(viewportX, viewportY, level) {
             const pos = this.getMapPositionAtViewportPos(viewportX, viewportY, level);
             return pos.map(Math.floor);
+        },
+        getLevel3MapOpacity(map) {
+            return this.zoomLevel == 0
+                ? 0.3
+                : map.x == this.currentlyCenteredMap[0] && map.y == this.currentlyCenteredMap[1]
+                ? 1
+                : 0.7;
         }
     },
     computed: {
