@@ -1,21 +1,21 @@
 {
     "level0": [
         {
-            "x": -1,
-            "y": -1,
-            "file": "level0_-1,-1_60.png",
+            "x": -128,
+            "y": -128,
+            "file": "level0_-128,-128_60.png",
             "blank_pixels": 0
         },
         {
-            "x": -1,
+            "x": -128,
             "y": 0,
-            "file": "level0_-1,0_65.png",
+            "file": "level0_-128,0_65.png",
             "blank_pixels": 0
         },
         {
             "x": 0,
-            "y": -1,
-            "file": "level0_0,-1_58.png",
+            "y": -128,
+            "file": "level0_0,-128_58.png",
             "blank_pixels": 0
         },
         {
@@ -26,94 +26,94 @@
         },
         {
             "x": 0,
-            "y": 1,
-            "file": "level0_0,1_36.png",
+            "y": 128,
+            "file": "level0_0,128_36.png",
             "blank_pixels": 0
         },
         {
-            "x": 1,
+            "x": 1024,
+            "y": 512,
+            "file": "level0_1024,512_15.png",
+            "blank_pixels": 806
+        },
+        {
+            "x": 128,
             "y": 0,
-            "file": "level0_1,0_37.png",
+            "file": "level0_128,0_37.png",
             "blank_pixels": 378
         },
         {
-            "x": 1,
-            "y": 1,
-            "file": "level0_1,1_48.png",
+            "x": 128,
+            "y": 128,
+            "file": "level0_128,128_48.png",
             "blank_pixels": 0
         },
         {
-            "x": 5,
-            "y": 2,
-            "file": "level0_5,2_47.png",
+            "x": 640,
+            "y": 256,
+            "file": "level0_640,256_47.png",
             "blank_pixels": 0
         },
         {
-            "x": 5,
-            "y": 3,
-            "file": "level0_5,3_43.png",
+            "x": 640,
+            "y": 384,
+            "file": "level0_640,384_43.png",
             "blank_pixels": 0
         },
         {
-            "x": 5,
-            "y": 4,
-            "file": "level0_5,4_42.png",
+            "x": 640,
+            "y": 512,
+            "file": "level0_640,512_42.png",
             "blank_pixels": 0
         },
         {
-            "x": 5,
-            "y": 5,
-            "file": "level0_5,5_45.png",
+            "x": 640,
+            "y": 640,
+            "file": "level0_640,640_45.png",
             "blank_pixels": 0
         },
         {
-            "x": 6,
-            "y": 3,
-            "file": "level0_6,3_44.png",
+            "x": 768,
+            "y": 384,
+            "file": "level0_768,384_44.png",
             "blank_pixels": 0
         },
         {
-            "x": 6,
-            "y": 4,
-            "file": "level0_6,4_41.png",
+            "x": 768,
+            "y": 512,
+            "file": "level0_768,512_41.png",
             "blank_pixels": 0
         },
         {
-            "x": 6,
-            "y": 5,
-            "file": "level0_6,5_46.png",
+            "x": 768,
+            "y": 640,
+            "file": "level0_768,640_46.png",
             "blank_pixels": 0
-        },
-        {
-            "x": 8,
-            "y": 4,
-            "file": "level0_8,4_15.png",
-            "blank_pixels": 806
         }
     ],
     "level3": [
         {
-            "x": -1,
-            "y": -1,
-            "file": "level3_-1,-1_63.png",
+            "x": -1024,
+            "y": -1024,
+            "file": "level3_-1024,-1024_63.png",
             "blank_pixels": 8
         },
         {
-            "x": -1,
+            "x": -1024,
             "y": 0,
-            "file": "level3_-1,0_68.png",
+            "file": "level3_-1024,0_68.png",
             "blank_pixels": 16
         },
         {
-            "x": -1,
-            "y": 1,
-            "file": "level3_-1,1_85.png",
+            "x": -1024,
+            "y": 1024,
+            "file": "level3_-1024,1024_85.png",
             "blank_pixels": 1
         },
         {
             "x": 0,
-            "y": -1,
-            "file": "level3_0,-1_52.png",
+            "y": -1024,
+            "file": "level3_0,-1024_52.png",
             "blank_pixels": 35
         },
         {
@@ -124,26 +124,26 @@
         },
         {
             "x": 0,
-            "y": 1,
-            "file": "level3_0,1_73.png",
+            "y": 1024,
+            "file": "level3_0,1024_73.png",
             "blank_pixels": 10
         },
         {
-            "x": 1,
-            "y": -1,
-            "file": "level3_1,-1_77.png",
+            "x": 1024,
+            "y": -1024,
+            "file": "level3_1024,-1024_77.png",
             "blank_pixels": 1
         },
         {
-            "x": 1,
+            "x": 1024,
             "y": 0,
-            "file": "level3_1,0_18.png",
+            "file": "level3_1024,0_18.png",
             "blank_pixels": 16
         },
         {
-            "x": 1,
-            "y": 1,
-            "file": "level3_1,1_81.png",
+            "x": 1024,
+            "y": 1024,
+            "file": "level3_1024,1024_81.png",
             "blank_pixels": 6
         }
     ],

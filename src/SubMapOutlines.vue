@@ -1,6 +1,6 @@
 <template>
     <svg
-        id="subMapOutlineOverlay"
+        class="subMapOutlineOverlay"
         :viewBox="`0 0 ${viewBoxDimensions.x} ${viewBoxDimensions.y}`"
         xmlns="http://www.w3.org/2000/svg"
     >
@@ -15,12 +15,11 @@
 </template>
 
 <script>
+import MapCollage from "./MapCollage";
 export default {
     props: {
-        subMaps: {
-            type: Array,
-            // objects containing at least the keys "x", "y", and a "file" key that acts
-            // as a unique id
+        collage: {
+            type: MapCollage,
             required: true
         },
         zoomLevel: {
@@ -32,22 +31,39 @@ export default {
             required: true
         }
     },
+    data: () => ({
+        viewBoxDimensions: { x: 0, y: 0 },
+        subMapEdgeLength: 0
+    }),
+    created() {
+        // the dimensions of the viewbox and the borders within it are frozen here at
+        // component creation; to resize this component, alter its width and height
+        // css properties from its parent component. Resizing the svg element this
+        // way prevents weird artifacts during width and height transitions.
+        this.viewBoxDimensions = {
+            x: this.collage.fullMapDimensions._width + this.subMapBorderWidth * 2,
+            y: this.collage.fullMapDimensions._height + this.subMapBorderWidth * 2
+        };
+        this.subMapEdgeLength =
+            this.collage.getEdgeLength(this.zoomLevel) * this.collage.pxPerBlock;
+    },
     methods: {
         subMapHasAdjacent(subMap, dx, dy) {
-            // TODO: revist this
-            return this.$parent.relativeCoordsMapExistsAt(
-                subMap.x,
-                subMap.y,
-                dx,
-                dy,
+            // this method allows you to check if there is a map directly above (use
+            // dy == -1), below (dy==1), to the left (dx==-1), or to the right (dx ==
+            // 1) of another map.
+            return this.collage.mapExistsAtRelativeTo(
+                { x: subMap.x, y: subMap.y },
+                {
+                    x: dx * this.collage.getEdgeLength(this.zoomLevel),
+                    y: dy * this.collage.getEdgeLength(this.zoomLevel)
+                },
                 this.zoomLevel
             );
         },
         getSubMapBorders(subMap) {
-            const subMapPos = {
-                x: subMap.x * this.subMapEdgeLength - this.$parent.lowestMapCoords.x,
-                y: subMap.y * this.subMapEdgeLength - this.$parent.lowestMapCoords.y
-            };
+            const subMapPosLeftTop = this.collage.getMapPosWithinCollage(subMap);
+            const subMapPos = { x: subMapPosLeftTop._left, y: subMapPosLeftTop._top };
 
             const lines = [];
 
@@ -143,22 +159,8 @@ export default {
         }
     },
     computed: {
-        subMapEdgeLength() {
-            return 1 / (this.zoomLevel == 3 ? 1 : 8);
-        },
-        viewBoxDimensions() {
-            return {
-                x:
-                    this.$parent.highestMapCoords.x -
-                    this.$parent.lowestMapCoords.x +
-                    1 +
-                    this.subMapBorderWidth * 2,
-                y:
-                    this.$parent.highestMapCoords.y -
-                    this.$parent.lowestMapCoords.y +
-                    1 +
-                    this.subMapBorderWidth * 2
-            };
+        subMaps() {
+            return this.collage.maps["level" + this.zoomLevel];
         }
     }
 };

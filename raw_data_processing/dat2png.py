@@ -56,14 +56,25 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
     with open(file, "rb") as data_file:
         raw_data = gzip.decompress(data_file.read())
 
+    # the scale is a value from 0 to 4, with 0 being the most zoomed-in map and 4
+    # being the least
     map_scale = nbt_search(raw_data, b'scale', 'byte')
+    # east-west coordinate
     map_x_center = nbt_search(raw_data, b'xCenter', 'int')
+    # north-south coordinate
     map_z_center = nbt_search(raw_data, b'zCenter', 'int')
 
+    # side length in blocks of the relevant map
     side_length = 128*2**map_scale
-    zero_point = -64 + side_length/2
-    relative_x = int((map_x_center-zero_point)//side_length)
-    relative_y = int((map_z_center-zero_point)//side_length)
+    # by default, the coordinates of the top left corner of minecraft maps have the
+    # form -64 + (sideLength)(distanceFromOrigin//sideLength), so that a level 0
+    # (128x128) map made less than a side length away from the origin will be
+    # centered on it (thus having a top left corner at -64, -64.) This is excessively
+    # complex, and in this application the top left corner of a map that contains the
+    # in-game origin will always have coordinates 0, 0. the coordinates of said top
+    # left corner are what we are storing, here.
+    relative_x = int(map_x_center - side_length/2 + 64)
+    relative_y = int(map_z_center - side_length/2 + 64)
 
     color_codes = nbt_search(raw_data, b'colors', 'bytes')
     assert len(color_codes) == 128*128
@@ -107,21 +118,26 @@ def get_coords(map_info):
     return f"{map_info['x']},{map_info['y']}"
 
 
+approved_files = []
 for scale_level in processed_maps.values():
     scale_level.sort(key=get_coords)
     i = 1
     while i < len(scale_level):
         if get_coords(scale_level[i]) == get_coords(scale_level[i-1]):
             if scale_level[i]["blank_pixels"] > scale_level[i-1]["blank_pixels"]:
-                deleted = scale_level.pop(i)
+                scale_level.pop(i)
             else:
-                deleted = scale_level.pop(i-1)
-            Path(deleted["file"]).unlink()
+                scale_level.pop(i-1)
         else:
             i += 1
 
     for final_map_data in scale_level:
         final_map_data["file"] = final_map_data["file"].split("/")[-1]
+        approved_files.append(final_map_data["file"])
+
+for file in Path('../public/maps').glob('level*.png'):
+    if file.name not in approved_files:
+        file.unlink()
 
 with open("../src/mapdata/processed_maps.json", "w+") as output_record:
     json.dump(processed_maps, output_record)
