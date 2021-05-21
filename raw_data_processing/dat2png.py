@@ -100,6 +100,7 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
         map_image.save(map_image_filename, optimize=True)
 
         processed_maps["level"+str(map_scale)].append({
+            "id": map_id,
             "x": relative_x,
             "y": relative_y,
             "file": map_image_filename,
@@ -118,26 +119,38 @@ def get_coords(map_info):
     return f"{map_info['x']},{map_info['y']}"
 
 
-approved_files = []
+redundant_files = []
 for scale_level in processed_maps.values():
     scale_level.sort(key=get_coords)
     i = 1
     while i < len(scale_level):
         if get_coords(scale_level[i]) == get_coords(scale_level[i-1]):
-            if scale_level[i]["blank_pixels"] > scale_level[i-1]["blank_pixels"]:
-                scale_level.pop(i)
+            # order the two maps occupying the same coordinates by id; this means
+            # that sorted_maps[0] will be older than sorted_maps[1]
+            sorted_maps = sorted(
+                [scale_level[i], scale_level[i-1]], key=lambda x: int(x["id"]))
+            # unless the newer map has more than 5 percent more of the map not filled
+            # out, keep it
+            if sorted_maps[1]["blank_pixels"] < sorted_maps[0]["blank_pixels"]-0.05*128**2:
+                redundant_files.append(sorted_maps[0]["file"])
+                scale_level.remove(sorted_maps[0])
+            # otherwise, only keep the map that is most filled out
             else:
-                scale_level.pop(i-1)
+                if scale_level[i]["blank_pixels"] > scale_level[i-1]["blank_pixels"]:
+                    redundant_files.append(scale_level.pop(i)["file"])
+                else:
+                    redundant_files.append(scale_level.pop(i-1)["file"])
         else:
             i += 1
 
     for final_map_data in scale_level:
         final_map_data["file"] = final_map_data["file"].split("/")[-1]
-        approved_files.append(final_map_data["file"])
 
-for file in Path('../public/maps').glob('level*.png'):
-    if file.name not in approved_files:
-        file.unlink()
+for file in redundant_files:
+    try:
+        Path(file).unlink()
+    except:
+        print("could not delete redundant file " + file)
 
 with open("../src/mapdata/processed_maps.json", "w+") as output_record:
     json.dump(processed_maps, output_record)
