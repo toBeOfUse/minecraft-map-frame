@@ -1,3 +1,8 @@
+interface Coords {
+  x: number;
+  y: number;
+}
+
 interface CSSDimensions {
   width: string;
   height: string;
@@ -32,4 +37,148 @@ class Position {
   }
 }
 
-export { CSSDimensions, CSSPosition, Dimensions, Position };
+enum CornerType {
+  Unset,
+  Straight,
+  Concave,
+  Convex,
+}
+
+class Corner {
+  x: number;
+  y: number;
+  angle: CornerType;
+
+  constructor(x: number, y: number) {
+    this.angle = CornerType.Unset;
+    this.x = x;
+    this.y = y;
+  }
+
+  setCornerType(type: CornerType) {
+    this.angle = type;
+  }
+}
+
+interface Map {
+  x: number;
+  y: number;
+  file: String;
+}
+
+class Island {
+  private level: number;
+  private maps: Set<Map>;
+  private mapIndex: Set<String>;
+  // this stores the map corners that lie along an outer edge of the island. they are
+  // stored in clockwise winding order. The "edges" of the island can be said to be
+  // the lines lying between each "corner".
+  corners: Corner[];
+
+  // the following two fields store coordinates that are meant to be used relative to
+  // a map's base coordinates. the first stores the relative position of each corner
+  // of the map (starting with the top left and going clockwise;) the second stores
+  // the coords of the adjacent maps that, for each that does not exist, means that
+  // the current map is on one of the edges of the island. the first entry stores the
+  // coordinates to check to see if there is a map above the current map; the second
+  // to the right, then below, then to the left. these fields are populated in the
+  // constructor because we need to know what zoom level we are at before we can
+  // create them. the "corners" field in coordsToCheckForEdges indicates the indices
+  // of the corner coordinates in cornerOffsets that should be used to create the
+  // corners for the currently-being-discovered edge.
+  private cornerOffsets: Coords[];
+  private coordsToCheckForEdges: {
+    x: number;
+    y: number;
+    corners: [number, number];
+  }[];
+
+  get edgeLength() {
+    return 128 * 2 ** this.level;
+  }
+
+  constructor(level: number) {
+    this.level = level;
+    this.maps = new Set();
+    this.corners = [];
+    this.mapIndex = new Set();
+
+    // see lengthy explanation above (where these fields are declared)
+    this.cornerOffsets = [
+      { x: 0, y: 0 },
+      { x: this.edgeLength, y: 0 },
+      { x: this.edgeLength, y: this.edgeLength },
+      { x: 0, y: this.edgeLength },
+    ];
+
+    this.coordsToCheckForEdges = [
+      { x: 0, y: -this.edgeLength, corners: [0, 1] },
+      { x: this.edgeLength, y: 0, corners: [1, 2] },
+      { x: 0, y: this.edgeLength, corners: [2, 3] },
+      { x: -this.edgeLength, y: 0, corners: [3, 0] },
+    ];
+  }
+
+  private coordsToID(coords: Coords): string {
+    return coords.x + "," + coords.y;
+  }
+
+  addMap(map: Map): void {
+    this.maps.add(map);
+    this.mapIndex.add(this.coordsToID(map));
+  }
+
+  addMaps(maps: Iterable<Map>) {
+    for (const map of maps) {
+      this.addMap(map);
+    }
+  }
+
+  findEdges(): void {
+    const edges: [Corner, Corner][] = [];
+    for (const map of this.maps) {
+      const cornerCoords = this.cornerOffsets.map((offset) => ({
+        x: offset.x + map.x,
+        y: offset.y + map.y,
+      }));
+      for (const offset of this.coordsToCheckForEdges) {
+        const coordsToCheck = { x: offset.x + map.x, y: offset.y + map.y };
+        if (!this.mapIndex.has(this.coordsToID(coordsToCheck))) {
+          const corner1Coords = cornerCoords[offset.corners[0]];
+          const corner1 = new Corner(corner1Coords.x, corner1Coords.y);
+
+          const corner2Coords = cornerCoords[offset.corners[1]];
+          const corner2 = new Corner(corner2Coords.x, corner2Coords.y);
+          edges.push([corner1, corner2]);
+        }
+      }
+    }
+    const sortedCorners = [edges[0][0], edges[0][1]];
+    while (sortedCorners.length < edges.length) {
+      const lookingFor = sortedCorners[sortedCorners.length - 1];
+      // optimization: we could index edges by their first corner and then use a
+      // lookup to grab them instead of this brute force "find"
+      const found = edges.find(
+        (edge) => edge[0].x == lookingFor.x && edge[0].y == lookingFor.y
+      );
+      if (found) {
+        sortedCorners.push(found[1]);
+      } else {
+        console.error("could not find corner to follow", lookingFor);
+      }
+    }
+    this.corners = sortedCorners;
+  }
+}
+
+export {
+  CSSDimensions,
+  CSSPosition,
+  Dimensions,
+  Position,
+  Map,
+  Corner,
+  CornerType,
+  Island,
+  Coords,
+};

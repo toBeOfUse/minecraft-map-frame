@@ -1,14 +1,22 @@
-import { CSSDimensions, CSSPosition, Dimensions, Position } from "./Types";
-
-interface Map {
-  x: number;
-  y: number;
-  file: String;
-}
+import {
+  Corner,
+  CornerType,
+  CSSPosition,
+  Dimensions,
+  Position,
+  Map,
+  Island,
+  Coords,
+} from "./Types";
 
 interface MapsByLevel {
   level0: Map[];
   level3: Map[];
+}
+
+interface IslandsByLevel {
+  level0: Island[];
+  level3: Island[];
 }
 
 interface PointOfInterest {
@@ -20,11 +28,6 @@ interface PointOfInterest {
 interface POIsByLevel {
   level0: PointOfInterest[];
   level3: PointOfInterest[];
-}
-
-interface Coords {
-  x: number;
-  y: number;
 }
 
 interface ScaleInfo {
@@ -42,6 +45,16 @@ export default class MapCollage {
   highestMapCoords: Coords;
 
   fullMapDimensions: Dimensions;
+
+  islands: IslandsByLevel;
+
+  // dx and dy for top, right, bottom, left
+  public static readonly sides: [number, number][] = [
+    [0, -1],
+    [1, 0],
+    [0, 1],
+    [-1, 0],
+  ];
 
   constructor(
     maps: MapsByLevel,
@@ -78,9 +91,56 @@ export default class MapCollage {
         this.pxPerBlock
     );
 
-    // create level 3 "island" with edges and corners (convex and concave)
+    this.islands = { level3: [], level0: [] };
+
+    // a lot of this code feels like it should be in the island class, but we need
+    // access to all the maps to union-find them :/
+    const checkedMaps = { level0: new Set(), level3: new Set() };
+    let level: keyof MapsByLevel;
+    for (level in checkedMaps) {
+      const levelInt = parseInt(level.slice(-1));
+      while (checkedMaps[level].size < this.maps[level].length) {
+        const isl = new Island(levelInt);
+        const uncheckedMap = this.maps[level].find(
+          (m) => !checkedMaps[level].has(m)
+        );
+        if (uncheckedMap) {
+          const islandMaps = this.buildIsland(uncheckedMap, levelInt);
+          for (const map of islandMaps) {
+            checkedMaps[level].add(map);
+          }
+          isl.addMaps(islandMaps);
+        }
+        isl.findEdges();
+        this.islands[level].push(isl);
+      }
+    }
 
     console.log("COLLAGE: full initial state:", this);
+  }
+
+  buildIsland(map: Map, level: number): Set<Map> {
+    const result = new Set<Map>();
+    const edgeLength = this.getEdgeLength(level);
+    const search = (map: Map | undefined) => {
+      if (!map) return; // should not happen
+      if (!result.has(map)) {
+        result.add(map);
+        for (const side of MapCollage.sides) {
+          if (this.subMapHasAdjacent(map, ...side, level)) {
+            search(
+              this.getMapFromCoords(
+                map.x + side[0] * edgeLength,
+                map.y + side[1] * edgeLength,
+                level
+              )
+            );
+          }
+        }
+      }
+    };
+    search(map);
+    return result;
   }
 
   resize(sizing: ScaleInfo) {
@@ -119,12 +179,12 @@ export default class MapCollage {
     return new Position(coords.x * this.pxPerBlock, coords.y * this.pxPerBlock);
   }
 
-  getMarkerPos(marker: PointOfInterest): CSSPosition {
+  getMapPosWithinCollagePx(pos: Coords): CSSPosition {
     // translates a marker's position (which is stored in minecraft block units) into
     // an object that can be used to position the marker within the collage with CSS
     const coords = this.getCoordsRelativeToCollage({
-      x: marker.x,
-      y: marker.y,
+      x: pos.x,
+      y: pos.y,
     });
     // this could actually be pre-calculated and assigned to the point of interest
     // objects in the constructor
@@ -166,6 +226,20 @@ export default class MapCollage {
     return this.mapExistsAt(absoluteCoords, level);
   }
 
+  subMapHasAdjacent(map: Map, dx: number, dy: number, level: number) {
+    // this method allows you to check if there is a map directly above (use
+    // dy == -1), below (dy==1), to the left (dx==-1), or to the right (dx ==
+    // 1) of another map.
+    return this.mapExistsAtRelativeTo(
+      { x: map.x, y: map.y },
+      {
+        x: dx * this.getEdgeLength(level),
+        y: dy * this.getEdgeLength(level),
+      },
+      level
+    );
+  }
+
   getCoordsWithinCollageFromViewportPos(
     viewportPos: Position,
     collagePos: Position
@@ -176,6 +250,14 @@ export default class MapCollage {
     const x = (-collagePos._left + viewportPos._left) / this.pxPerBlock;
     const y = (-collagePos._top + viewportPos._top) / this.pxPerBlock;
     return { x: x + this.lowestMapCoords.x, y: y + this.lowestMapCoords.y };
+  }
+
+  getMapFromCoords(x: number, y: number, level: number) {
+    // TODO: to scale better, this method should be replaced with a version that queries
+    // a sorted index of maps, or possibly queries an object with keys that
+    // incorporate the information from this method's parameters
+    const maps = level == 0 ? this.maps.level0 : this.maps.level3;
+    return maps.find((m) => m.x == x && m.y == y);
   }
 
   getMapFromViewportPos(

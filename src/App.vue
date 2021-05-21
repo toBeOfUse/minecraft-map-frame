@@ -60,15 +60,17 @@
                     ...getOutlinePos(0),
                 }"
             />
+            <!--
             <sub-map-outlines
                 :zoomLevel="3"
                 :subMapBorderWidth="fullMapBorderWidth"
                 :collage="collage"
                 :style="getOutlinePos(3)"
             />
+            -->
             <div
                 class="mapMarker"
-                :style="collage.getMarkerPos(location)"
+                :style="collage.getMapPosWithinCollagePx(location)"
                 v-for="(location, i) in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
             >
@@ -317,7 +319,8 @@ export default {
         },
         subMapBorderWidth() {
             // this is the width of the sub-map borders at the initial zoom level in
-            // pixels
+            // pixels (it automatically becomes wider when we zoom in via the scaling
+            // of the svg outline overlay via css)
             return 3;
         },
         fullMapBorderWidth() {
@@ -372,34 +375,8 @@ export default {
             return { lowerXBound, upperXBound, lowerYBound, upperYBound };
         },
         currentSubMapIsland() {
-            // geometry logic, although a version decoupled from the interface would
-            // have to be passed the lastZoomedInOnSubMap
-            const result = new Set();
-            const islandSearch = startingMap => {
-                const hashable = startingMap[0] + "," + startingMap[1];
-                if (!result.has(hashable)) {
-                    result.add(hashable);
-                    if (this.collage.mapExistsAt({ x: startingMap[0] - 1, y: startingMap[1] }, 0)) {
-                        islandSearch([startingMap[0] - 1, startingMap[1]]);
-                    }
-                    if (this.collage.mapExistsAt({ x: startingMap[0], y: startingMap[1] - 1 }, 0)) {
-                        islandSearch([startingMap[0] - 1, startingMap[1] - 1]);
-                    }
-                    if (this.collage.mapExistsAt({ x: startingMap[0] + 1, y: startingMap[1] }, 0)) {
-                        islandSearch([startingMap[0] + 1, startingMap[1]]);
-                    }
-                    if (this.collage.mapExistsAt({ x: startingMap[0], y: startingMap[1] + 1 }, 0)) {
-                        islandSearch([startingMap[0], startingMap[1] + 1]);
-                    }
-                }
-            };
-
-            if (this.lastZoomedInOnSubMap[0] !== this.lastZoomedInOnSubMap[0]) {
-                return null;
-            } else {
-                islandSearch(this.lastZoomedInOnSubMap);
-                return result;
-            }
+            // TODO: put in code to get this info from this.collage
+            return undefined;
         }
     },
     watch: {
