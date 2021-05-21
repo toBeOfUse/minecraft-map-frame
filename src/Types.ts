@@ -153,6 +153,7 @@ class Island {
         }
       }
     }
+
     const sortedCorners = [edges[0][0], edges[0][1]];
     while (sortedCorners.length < edges.length) {
       const lookingFor = sortedCorners[sortedCorners.length - 1];
@@ -167,6 +168,42 @@ class Island {
         console.error("could not find corner to follow", lookingFor);
       }
     }
+
+    const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+    for (let i = 0; i < sortedCorners.length; i++) {
+      const corner0 = sortedCorners[mod(i - 1, sortedCorners.length)];
+      const corner1 = sortedCorners[i];
+      const corner2 = sortedCorners[mod(i + 1, sortedCorners.length)];
+
+      const v1 = { x: corner0.x - corner1.x, y: corner0.y - corner1.y };
+      const v1meta = {
+        direction: v1.x == 0 ? "y" : "x",
+        sign: v1.x == 0 ? Math.sign(v1.y) : Math.sign(v1.x),
+      };
+      const v2 = { x: corner2.x - corner1.x, y: corner2.y - corner1.y };
+      const v2meta = {
+        direction: v2.x == 0 ? "y" : "x",
+        sign: v2.x == 0 ? Math.sign(v2.y) : Math.sign(v2.x),
+      };
+
+      if (v1meta.direction == v2meta.direction) {
+        corner1.angle = CornerType.Straight;
+      } else if (v1meta.direction == "x" && v2meta.direction == "y") {
+        if (v1meta.sign == v2meta.sign) {
+          corner1.angle = CornerType.Concave;
+        } else {
+          corner1.angle = CornerType.Convex;
+        }
+      } else {
+        if (v1meta.sign != v2meta.sign) {
+          corner1.angle = CornerType.Concave;
+        } else {
+          corner1.angle = CornerType.Convex;
+        }
+      }
+    }
+
     this.corners = sortedCorners;
   }
 }

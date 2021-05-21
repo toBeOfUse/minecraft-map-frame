@@ -12,6 +12,7 @@
 
 <script>
 import MapCollage from "./MapCollage";
+import { CornerType } from "./Types";
 export default {
     props: {
         collage: {
@@ -56,8 +57,9 @@ export default {
             for (const island of this.collage.islands.level0) {
                 for (const corner of island.corners) {
                     const cornerPos = this.collage.getMapPosWithinCollage(corner);
+                    const type = CornerType[corner.angle];
                     corners.push({
-                        text: i + "",
+                        text: i + " " + type,
                         id: i,
                         x: cornerPos._left,
                         y: cornerPos._top

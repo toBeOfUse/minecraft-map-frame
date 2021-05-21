@@ -268,15 +268,9 @@ export default class MapCollage {
     // given a position within the viewport, the current position of the collage, and
     // a map level, this method returns the object of the map that occupies that
     // viewport position.
-    console.log("trying to find map at viewport position", viewportPos);
-    console.log("full collage is positioned at", collagePos);
     const coordsWithinCollage = this.getCoordsWithinCollageFromViewportPos(
       viewportPos,
       collagePos
-    );
-    console.log(
-      "map appears to have coords within collage",
-      coordsWithinCollage
     );
     const level = mapLevel == 0 ? this.maps.level0 : this.maps.level3;
     const relevantEdgeLength = this.getEdgeLength(mapLevel);

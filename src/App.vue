@@ -205,13 +205,14 @@ export default {
                 navigator.clipboard.writeText(coords);
             }
             if (this.outliningSubMaps && this.zoomLevel !== 0) {
-                const { x, y } = this.collage.getMapFromViewportPos(
+                const clickedMap = this.collage.getMapFromViewportPos(
                     new Position(event.clientX, event.clientY),
                     this.fullMapPos,
                     0
                 );
-                console.log("map at this position was clicked", x, y);
-                if (this.collage.mapExistsAt({ x, y }, 0)) {
+                if (clickedMap) {
+                    const { x, y } = clickedMap;
+                    console.log("map at this position was clicked", x, y);
                     this.lastZoomedInOnSubMap = [x, y];
                     this.isMidZoom = true;
                     requestAnimationFrame(() => {
@@ -228,6 +229,8 @@ export default {
                             });
                         });
                     });
+                } else {
+                    console.log("area with no submap was clicked");
                 }
             }
         },
@@ -356,23 +359,12 @@ export default {
         },
         currentPanningBounds() {
             // interface logic
-            const focused = this.currentlyCenteredMap;
-            let lowerXBound;
-            if (this.relativeCoordsMapExistsAt(...focused, 1, 0)) {
-                lowerXBound = -Infinity;
-            } else {
-                lowerXBound = this.getPosCenteredOn(focused).left;
-            }
-            const upperXBound = this.relativeCoordsMapExistsAt(...focused, -1, 0)
-                ? Infinity
-                : this.getPosCenteredOn(focused).left;
-            const lowerYBound = this.relativeCoordsMapExistsAt(...focused, 0, 1)
-                ? -Infinity
-                : this.getPosCenteredOn(focused).top;
-            const upperYBound = this.relativeCoordsMapExistsAt(...focused, 0, -1)
-                ? Infinity
-                : this.getPosCenteredOn(focused).top;
-            return { lowerXBound, upperXBound, lowerYBound, upperYBound };
+            return {
+                lowerXBound: -Infinity,
+                upperXBound: Infinity,
+                lowerYBound: -Infinity,
+                upperYBound: Infinity
+            };
         },
         currentSubMapIsland() {
             // TODO: put in code to get this info from this.collage
