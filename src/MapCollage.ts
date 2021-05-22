@@ -62,8 +62,8 @@ export default class MapCollage {
     sizing: ScaleInfo
   ) {
     console.log("COLLAGE: creating map collage object");
-    this.maps = maps;
-    this.pois = pointsOfInterest;
+    this.maps = Object.freeze(maps);
+    this.pois = Object.freeze(pointsOfInterest);
     console.log(
       "COLLAGE: sizing information for converting blocks to pixels:",
       sizing
@@ -115,6 +115,8 @@ export default class MapCollage {
         this.islands[level].push(isl);
       }
     }
+
+    Object.freeze(this.islands);
 
     console.log("COLLAGE: full initial state:", this);
   }
@@ -192,8 +194,8 @@ export default class MapCollage {
     const { x, y } = this.getCoordsRelativeToCollage(mapCoords);
     const mapEdgeLength = this.getEdgeLength(mapLevel) * this.pxPerBlock;
     return new Position(
-      -x * this.pxPerBlock + (viewport._width - mapEdgeLength) / 2,
-      -y * this.pxPerBlock + (viewport._height - mapEdgeLength) / 2
+      -x * this.pxPerBlock + (viewport.width - mapEdgeLength) / 2,
+      -y * this.pxPerBlock + (viewport.height - mapEdgeLength) / 2
     );
   }
 
@@ -235,8 +237,8 @@ export default class MapCollage {
     // given a position within the viewport and the current position of the full
     // collage, this method translates the position within the viewport to coords in
     // minecraft units (1 unit == 1 block, origin is arbitrary)
-    const x = (-collagePos._left + viewportPos._left) / this.pxPerBlock;
-    const y = (-collagePos._top + viewportPos._top) / this.pxPerBlock;
+    const x = (-collagePos.left + viewportPos.left) / this.pxPerBlock;
+    const y = (-collagePos.top + viewportPos.top) / this.pxPerBlock;
     return { x: x + this.lowestMapCoords.x, y: y + this.lowestMapCoords.y };
   }
 
