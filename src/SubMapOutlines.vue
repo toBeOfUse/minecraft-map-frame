@@ -11,7 +11,7 @@
 <script lang="ts">
 import Vue from "vue";
 import MapCollage from "./MapCollage";
-import { Dimensions, Map, Coords, Position } from "./Types";
+import { Dimensions, Map, Coords, Position, CornerType } from "./Types";
 const comp = Vue.extend({
     name: "SubMapOutlines",
     props: {
@@ -62,13 +62,13 @@ const comp = Vue.extend({
                     const cornerTo = island.corners[(i + 1) % island.corners.length];
                     const mainAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
                     const direction = Math.sign(cornerTo[mainAxis] - cornerFrom[mainAxis]);
-                    // counterclockwise circle of vector directions in the browser
-                    // (and minecraft map) coordinate system
+                    // counterclockwise circle of cardinal vector directions in the
+                    // browser (and minecraft map) coordinate system
                     const circleOfVectors = ["+x", "-y", "-x", "+y"];
-                    // the normal vector points *out* from the map and the edge that
-                    // it's attached to; we only care about its general direction; it
-                    // can be found by rotating the vector that the edge forms around
-                    // the given circle of vectors
+                    // the normal vector points *out* from the map/edge that it's
+                    // attached to; we only care about its general direction; it can
+                    // be found by rotating the vector that the edge forms around the
+                    // given circle of vectors
                     const normalVector =
                         circleOfVectors[
                             (circleOfVectors.indexOf((direction > 0 ? "+" : "-") + mainAxis) + 1) %
@@ -79,20 +79,20 @@ const comp = Vue.extend({
                     const normalVectorDirection = parseInt(normalVector.substring(0, 1) + "1");
 
                     const innerBorder = [
-                        this.collage.getPosWithinCollage(cornerTo),
                         this.collage.getPosWithinCollage(cornerFrom),
+                        this.collage.getPosWithinCollage(cornerTo),
                     ];
 
                     // adjust for the fact that the outline overlay svg extends
-                    // this.subMapBorderWidth px towards the left and towards the top
-                    // of the underlying map (so that it can display borders to the
-                    // left of and above every map)
+                    // towards the left and towards the top of the underlying map by
+                    // this.subMapBorderWidth px (so that it could display borders to
+                    // the left of and above every map)
                     innerBorder[0].x += this.subMapBorderWidth;
                     innerBorder[0].y += this.subMapBorderWidth;
                     innerBorder[1].x += this.subMapBorderWidth;
                     innerBorder[1].y += this.subMapBorderWidth;
 
-                    // clone the inner border, and then translate it by
+                    // deep copy the inner border, and then translate it by
                     // this.subMapBorderWidth px in the direction of the normal
                     // vector
                     const outerBorder = [
@@ -104,6 +104,17 @@ const comp = Vue.extend({
                     outerBorder[1][normalVectorAxis] +=
                         normalVectorDirection * this.subMapBorderWidth;
 
+                    // if the corner we're drawing the line To is convex, extend it
+                    // out a little further along the direction that the edge is in
+                    // to cover the corner
+                    if (cornerTo.angle == CornerType.Convex) {
+                        outerBorder[1][mainAxis] += direction * this.subMapBorderWidth;
+                        innerBorder[1][mainAxis] += direction * this.subMapBorderWidth;
+                    }
+
+                    // find the point at the top left of our border rectangle (lowest
+                    // x, lowest y) and the point at the bottom right (highest x,
+                    // highest y)
                     const x1 = Math.min(
                         ...innerBorder.map((c) => c.x),
                         ...outerBorder.map((c) => c.x)
