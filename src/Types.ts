@@ -15,6 +15,12 @@ class Dimensions {
     this._width = width;
     this._height = height;
   }
+  get width() {
+    return this._width;
+  }
+  get height() {
+    return this._height;
+  }
   toCSS(): CSSDimensions {
     return { width: this._width + "px", height: this._height + "px" };
   }
@@ -35,17 +41,14 @@ class Position {
   toCSS(): CSSPosition {
     return { top: this._top + "px", left: this._left + "px" };
   }
-  get x() {
+  asCoords(): Coords {
+    return { x: this._left, y: this._top };
+  }
+  get left() {
     return this._left;
   }
-  set x(newValue) {
-    this._left = newValue;
-  }
-  get y() {
+  get top() {
     return this._top;
-  }
-  set y(newValue) {
-    this._top = newValue;
   }
 }
 
@@ -228,6 +231,11 @@ class Island {
   }
 }
 
+// sigh
+function clamp(input: number, min: number, max: number) {
+  return Math.max(min, Math.min(input, max));
+}
+
 export {
   CSSDimensions,
   CSSPosition,
@@ -238,4 +246,5 @@ export {
   CornerType,
   Island,
   Coords,
+  clamp,
 };

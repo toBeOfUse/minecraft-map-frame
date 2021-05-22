@@ -1,7 +1,7 @@
 <template>
     <svg
         class="subMapOutlineOverlay"
-        :viewBox="`0 0 ${viewBoxDimensions._width} ${viewBoxDimensions._height}`"
+        :viewBox="`0 0 ${viewBoxDimensions.width} ${viewBoxDimensions.height}`"
         xmlns="http://www.w3.org/2000/svg"
     >
         <rect v-for="pos in getSubMapBorders()" :key="pos.id" v-bind="pos" />
@@ -40,11 +40,13 @@ const comp = Vue.extend({
         // css properties from its parent component. Resizing the svg element this
         // way prevents weird artifacts during width and height transitions.
         this.viewBoxDimensions = new Dimensions(
-            this.collage.fullMapDimensions._width + this.subMapBorderWidth * 2,
-            this.collage.fullMapDimensions._height + this.subMapBorderWidth * 2
+            this.collage.fullMapDimensions.width + this.subMapBorderWidth * 2,
+            this.collage.fullMapDimensions.height + this.subMapBorderWidth * 2
         );
         this.subMapEdgeLength =
             this.collage.getEdgeLength(this.zoomLevel) * this.collage.pxPerBlock;
+        // TODO: freeze the results of calling getPosWithinCollage with all the
+        // available corners; then use that data during getSubMapBorders
     },
     methods: {
         subMapHasAdjacent(subMap: Map, dx: number, dy: number): boolean {
@@ -79,8 +81,8 @@ const comp = Vue.extend({
                     const normalVectorDirection = parseInt(normalVector.substring(0, 1) + "1");
 
                     const innerBorder = [
-                        this.collage.getPosWithinCollage(cornerFrom),
-                        this.collage.getPosWithinCollage(cornerTo),
+                        this.collage.getPosWithinCollage(cornerFrom).asCoords(),
+                        this.collage.getPosWithinCollage(cornerTo).asCoords(),
                     ];
 
                     // adjust for the fact that the outline overlay svg extends
@@ -96,8 +98,8 @@ const comp = Vue.extend({
                     // this.subMapBorderWidth px in the direction of the normal
                     // vector
                     const outerBorder = [
-                        new Position(innerBorder[0].x, innerBorder[0].y),
-                        new Position(innerBorder[1].x, innerBorder[1].y),
+                        new Position(innerBorder[0].x, innerBorder[0].y).asCoords(),
+                        new Position(innerBorder[1].x, innerBorder[1].y).asCoords(),
                     ];
                     outerBorder[0][normalVectorAxis] +=
                         normalVectorDirection * this.subMapBorderWidth;

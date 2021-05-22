@@ -11,7 +11,7 @@
                 ...collage.fullMapDimensions.toCSS(),
                 ...fullMapPos.toCSS(),
             }"
-            @click="handleMouseClick"
+            @click="handleMapClick"
             @mousemove="handleMouseMove"
             @touchmove="handleMouseMove"
             @mousedown="startPanning"
@@ -101,7 +101,7 @@ import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.json";
 import SubMapOutlines from "./SubMapOutlines.vue";
 import MapCollage from "./MapCollage.ts";
-import { Position, Dimensions } from "./Types.ts";
+import { Position, Dimensions, clamp } from "./Types.ts";
 
 export default {
     name: "App",
@@ -161,16 +161,17 @@ export default {
 
                 const bounds = this.currentPanningBounds;
 
-                this.fullMapPos._left += newX - this.lastPanningX;
-                this.fullMapPos._left = Math.max(
-                    Math.min(bounds.upperXBound, this.fullMapPos._left),
-                    bounds.lowerXBound
-                );
-
-                this.fullMapPos._top += newY - this.lastPanningY;
-                this.fullMapPos._top = Math.max(
-                    Math.min(bounds.upperYBound, this.fullMapPos._top),
-                    bounds.lowerYBound
+                this.fullMapPos = new Position(
+                    clamp(
+                        this.fullMapPos.left + newX - this.lastPanningX,
+                        bounds.lowerXBound,
+                        bounds.upperXBound
+                    ),
+                    clamp(
+                        this.fullMapPos.top + newY - this.lastPanningY,
+                        bounds.lowerYBound,
+                        bounds.upperYBound
+                    )
                 );
 
                 this.lastPanningX = newX;
@@ -190,7 +191,7 @@ export default {
                 ? event.pageY
                 : event.touches[0]?.pageY;
         },
-        handleMouseClick(event) {
+        handleMapClick(event) {
             // interface logic
             if (!this.deployed && navigator.clipboard) {
                 const coords = JSON.stringify(
@@ -218,10 +219,13 @@ export default {
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             this.zoomLevel = 0;
-                            this.fullMapPos = this.collage.getPosCenteredOn({ x, y }, 0, {
-                                height: this.windowHeight,
-                                width: this.windowWidth
-                            });
+                            // this.edgeLength updated when this.zoomLevel did
+                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                            this.fullMapPos = this.collage.getPosCenteredOn(
+                                { x, y },
+                                0,
+                                new Dimensions(this.windowWidth, this.windowHeight)
+                            );
                             this.$refs.map.addEventListener("transitionend", event => {
                                 if (event.target === event.currentTarget) {
                                     this.isMidZoom = false;
@@ -243,6 +247,8 @@ export default {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         this.zoomLevel = 3;
+                        // this.edgeLength updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
                         this.outliningSubMaps = false;
                         this.fullMapPos = this.collage.getPosCenteredOn(
                             { x: 0, y: 0 },
@@ -369,11 +375,6 @@ export default {
         currentSubMapIsland() {
             // TODO: put in code to get this info from this.collage
             return undefined;
-        }
-    },
-    watch: {
-        edgeLength(_oldValue, newValue) {
-            this.collage.resize({ mapLevel: 3, edgeLengthPx: newValue });
         }
     },
     mixins: [vueWindowSizeMixin]
