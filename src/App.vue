@@ -33,7 +33,7 @@
                     opacity: getLevel3MapOpacity(map),
                     width: edgeLength + 'px',
                     height: edgeLength + 'px',
-                    ...collage.getMapPosWithinCollage(map).toCSS(),
+                    ...collage.getPosWithinCollage(map).toCSS(),
                 }"
                 class="subMap"
             />
@@ -43,7 +43,7 @@
                 :src="`maps/${subMap.file}`"
                 class="subMap"
                 :style="{
-                    ...collage.getMapPosWithinCollage(subMap).toCSS(),
+                    ...collage.getPosWithinCollage(subMap).toCSS(),
                     width: subMapEdgeLength + 'px',
                     height: subMapEdgeLength + 'px',
                     visiblity: zoomLevel == 0 ? '' : 'hidden',
@@ -70,7 +70,7 @@
             -->
             <div
                 class="mapMarker"
-                :style="collage.getMapPosWithinCollagePx(location)"
+                :style="collage.getPosWithinCollage(location).toCSS()"
                 v-for="(location, i) in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
             >

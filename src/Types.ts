@@ -35,6 +35,18 @@ class Position {
   toCSS(): CSSPosition {
     return { top: this._top + "px", left: this._left + "px" };
   }
+  get x() {
+    return this._left;
+  }
+  set x(newValue) {
+    this._left = newValue;
+  }
+  get y() {
+    return this._top;
+  }
+  set y(newValue) {
+    this._top = newValue;
+  }
 }
 
 enum CornerType {
@@ -176,16 +188,24 @@ class Island {
       const corner1 = sortedCorners[i];
       const corner2 = sortedCorners[mod(i + 1, sortedCorners.length)];
 
+      interface VectorMeta {
+        direction: keyof Coords;
+        sign: number;
+      }
+
       const v1 = { x: corner0.x - corner1.x, y: corner0.y - corner1.y };
-      const v1meta = {
-        direction: v1.x == 0 ? "y" : "x",
-        sign: v1.x == 0 ? Math.sign(v1.y) : Math.sign(v1.x),
+      const v1meta: VectorMeta = {
+        direction: (v1.x == 0 ? "y" : "x") as keyof typeof v1,
+        sign: NaN,
       };
+      v1meta.sign = Math.sign(v1[v1meta.direction]);
+
       const v2 = { x: corner2.x - corner1.x, y: corner2.y - corner1.y };
-      const v2meta = {
-        direction: v2.x == 0 ? "y" : "x",
-        sign: v2.x == 0 ? Math.sign(v2.y) : Math.sign(v2.x),
+      const v2meta: VectorMeta = {
+        direction: (v2.x == 0 ? "y" : "x") as keyof typeof v2,
+        sign: NaN,
       };
+      v2meta.sign = Math.sign(v2[v2meta.direction]);
 
       if (v1meta.direction == v2meta.direction) {
         corner1.angle = CornerType.Straight;

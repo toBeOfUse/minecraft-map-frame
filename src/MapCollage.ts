@@ -172,26 +172,14 @@ export default class MapCollage {
     return { x, y };
   }
 
-  getMapPosWithinCollage(mapCoords: Coords): Position {
+  getPosWithinCollage(absCoords: Coords): Position {
     // translates a map's relative coords obtained from getCoordsRelativeToCollage to
     // an object that can be used to position the map within the collage with CSS
-    const coords = this.getCoordsRelativeToCollage(mapCoords);
-    return new Position(coords.x * this.pxPerBlock, coords.y * this.pxPerBlock);
-  }
-
-  getMapPosWithinCollagePx(pos: Coords): CSSPosition {
-    // translates a marker's position (which is stored in minecraft block units) into
-    // an object that can be used to position the marker within the collage with CSS
-    const coords = this.getCoordsRelativeToCollage({
-      x: pos.x,
-      y: pos.y,
-    });
-    // this could actually be pre-calculated and assigned to the point of interest
-    // objects in the constructor
-    return {
-      left: coords.x * this.pxPerBlock + "px",
-      top: coords.y * this.pxPerBlock + "px",
-    };
+    const relCoords = this.getCoordsRelativeToCollage(absCoords);
+    return new Position(
+      relCoords.x * this.pxPerBlock,
+      relCoords.y * this.pxPerBlock
+    );
   }
 
   getPosCenteredOn(
