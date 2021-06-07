@@ -3,7 +3,7 @@
 		{
 			"x": 91.52,
 			"y": 100.32,
-			"text": "village #1"
+			"text": "cassie is cuteville"
 		},
 		{
 			"x": 778.24,
@@ -91,11 +91,6 @@
 			"text": "the sandy desert"
 		},
 		{
-			"x": -938.64,
-			"y": -1005.92,
-			"text": "rabbit sighting"
-		},
-		{
 			"x": -779.6,
 			"y": -193.92,
 			"text": "northwestern flower field"
@@ -138,7 +133,7 @@
 		{
 			"x": 854.56,
 			"y": -577.76,
-			"text": "strange wooden room thing. sunken ship ???"
+			"text": "sunken ship with treasure map (pillaged by me)"
 		},
 		{
 			"x": 518.08,
@@ -153,7 +148,7 @@
 		{
 			"x": -998.32,
 			"y": -129.68,
-			"text": "llamas sighting"
+			"text": "here be llamas"
 		},
 		{
 			"x": -986.08,
@@ -188,22 +183,17 @@
 		{
 			"x": -247.04,
 			"y": 310.24,
-			"text": "pillager outpost tower"
+			"text": "pillager outpost tower (looted)"
 		},
 		{
 			"x": -185.04,
 			"y": 436.72,
-			"text": "pillager outpost house (wet)"
+			"text": "witch hut (wet)"
 		},
 		{
 			"x": -307.28,
 			"y": 724.24,
 			"text": "taiga ravine"
-		},
-		{
-			"x": -501.44,
-			"y": 704.72,
-			"text": "taiga rabbit sighting"
 		},
 		{
 			"x": -731.76,
@@ -214,11 +204,6 @@
 			"x": -713.76,
 			"y": 460.8,
 			"text": "spruce village ravine"
-		},
-		{
-			"x": -424.72,
-			"y": 399.12,
-			"text": "extensive hole"
 		},
 		{
 			"x": 1451.36,
@@ -234,11 +219,6 @@
 			"x": 1552.24,
 			"y": 16.72,
 			"text": "coral continued"
-		},
-		{
-			"x": 1653.12,
-			"y": 30.24,
-			"text": "suspicious hole"
 		},
 		{
 			"x": 1305.36,
@@ -258,7 +238,22 @@
 		{
 			"x": 2001.2,
 			"y": 78.4,
-			"text": "plain plains"
+			"text": "the plain plains"
+		},
+		{
+			"x": -1093.47,
+			"y": -341.69,
+			"text": "desert pyramid (skeletons?)"
+		},
+		{
+			"x": 1595.45,
+			"y": -874.76,
+			"text": "mooshroom island"
+		},
+		{
+			"x": 425.99,
+			"y": 504.46,
+			"text": "mitchama canal junction"
 		}
 	],
 	"level0": [
@@ -306,6 +301,26 @@
 			"x": 1087.28,
 			"y": 574.48,
 			"text": "i made this map while i was lost. it did not help"
+		},
+		{
+			"x": 194.38,
+			"y": 156.73,
+			"text": "mitchama canal on-ramp"
+		},
+		{
+			"x": 784.47,
+			"y": 505.15,
+			"text": "mitchama canal terminus"
+		},
+		{
+			"x": 52.64,
+			"y": 46.95,
+			"text": "forest of illusions"
+		},
+		{
+			"x": 18.13,
+			"y": 38.27,
+			"text": "🍉"
 		}
 	]
 }

@@ -2,6 +2,7 @@ import {
   Corner,
   CornerType,
   CSSPosition,
+  PointOfInterest,
   Dimensions,
   Position,
   Map,
@@ -17,12 +18,6 @@ interface MapsByLevel {
 interface IslandsByLevel {
   level0: Island[];
   level3: Island[];
-}
-
-interface PointOfInterest {
-  x: number;
-  y: number;
-  text: String;
 }
 
 interface POIsByLevel {
@@ -93,8 +88,6 @@ export default class MapCollage {
 
     this.islands = { level3: [], level0: [] };
 
-    // a lot of this code feels like it should be in the island class, but we need
-    // access to all the maps to union-find them :/
     const checkedMaps = { level0: new Set(), level3: new Set() };
     let level: keyof MapsByLevel;
     for (level in checkedMaps) {
@@ -113,6 +106,21 @@ export default class MapCollage {
         }
         isl.findEdges();
         this.islands[level].push(isl);
+      }
+    }
+
+    // we want to divide up all of the points of interest into their level 0 islands,
+    // if they exist on one. to do this, we will figure out what level 0 map they
+    // would occupy, check if the map exists, and look up the island containing it
+    // and add the point to it.
+
+    for (const poi of this.pois.level0.concat(this.pois.level3)) {
+      const mapX =
+        Math.floor(poi.x / this.getEdgeLength(0)) * this.getEdgeLength(0);
+      const mapY =
+        Math.floor(poi.y / this.getEdgeLength(0)) * this.getEdgeLength(0);
+      if (this.mapExistsAt({ x: mapX, y: mapY }, 0)) {
+        Island.getIslandContainingMap(0, { x: mapX, y: mapY }).addPOI(poi);
       }
     }
 

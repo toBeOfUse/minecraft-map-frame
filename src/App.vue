@@ -71,11 +71,11 @@
             <div
                 class="mapMarker"
                 :style="collage.getPosWithinCollage(location).toCSS()"
-                v-for="(location, i) in currentPointsOfInterest"
+                v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
             >
                 <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
-                <span class="caption" :style="captionPos.length && captionPos[i]">
+                <span class="caption">
                     {{ location.text }}
                 </span>
             </div>
@@ -101,7 +101,7 @@ import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.json";
 import SubMapOutlines from "./SubMapOutlines.vue";
 import MapCollage from "./MapCollage.ts";
-import { Position, Dimensions, clamp } from "./Types.ts";
+import { Position, Dimensions, Island, clamp } from "./Types.ts";
 
 export default {
     name: "App",
@@ -112,7 +112,6 @@ export default {
         deployed: window.location.protocol == "https:",
         mouseX: 0,
         mouseY: 0,
-        captionPos: [],
         zoomLevel: 3, // currently can be only either 0 or 3
         isMidZoom: false,
         fullMapPos: new Position(NaN, NaN), // properly set in "created" hook
@@ -120,6 +119,7 @@ export default {
         panning: false,
         lastPanningX: -1,
         lastPanningY: -1,
+        currentIsland: null,
         lastZoomedInOnSubMap: [NaN, NaN]
     }),
     created() {
@@ -132,9 +132,11 @@ export default {
             3,
             new Dimensions(this.windowWidth, this.windowHeight)
         );
+        // this will have to be changed if we add support for multiple level 3
+        // islands
+        this.currentIsland = this.collage.islands.level3[0];
     },
     mounted() {
-        // this.positionCaptions();
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
         }
@@ -226,6 +228,7 @@ export default {
                                 0,
                                 new Dimensions(this.windowWidth, this.windowHeight)
                             );
+                            this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                             this.$refs.map.addEventListener("transitionend", event => {
                                 if (event.target === event.currentTarget) {
                                     this.isMidZoom = false;
@@ -251,10 +254,13 @@ export default {
                         this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
                         this.outliningSubMaps = false;
                         this.fullMapPos = this.collage.getPosCenteredOn(
-                            { x: 0, y: 0 },
+                            this.currentlyCenteredMap,
                             3,
                             new Dimensions(this.windowWidth, this.windowHeight)
                         );
+                        // this will have to be changed if we add support for multiple level 3
+                        // islands
+                        this.currentIsland = this.collage.islands.level3[0];
                         this.$refs.map.addEventListener("transitionend", event => {
                             if (event.target === event.currentTarget) {
                                 this.isMidZoom = false;
@@ -263,38 +269,6 @@ export default {
                     });
                 });
             }
-        },
-        positionCaptions() {
-            // interface logic
-            // todo: re-tool this to work with a panning map, somehow (it isn't
-            // currently being called)
-            if (this.captionPos.length) {
-                return;
-            }
-            const newCaptionPos = [];
-            for (let i = 0; i < this.$refs.caption.length; i++) {
-                const caption = this.$refs.caption[i];
-                const rect = caption.getBoundingClientRect();
-                if (rect.x < 0) {
-                    newCaptionPos.push({
-                        position: "fixed",
-                        left: "5px",
-                        top: rect.top + "px",
-                        transform: "unset"
-                    });
-                } else if (rect.right > window.innerWidth) {
-                    newCaptionPos.push({
-                        position: "fixed",
-                        right: "5px",
-                        top: rect.top + "px",
-                        left: "unset",
-                        transform: "unset"
-                    });
-                } else {
-                    newCaptionPos.push({});
-                }
-            }
-            this.captionPos = newCaptionPos;
         },
         getLevel3MapOpacity(map) {
             // interface logic
@@ -336,23 +310,20 @@ export default {
             return this.subMapBorderWidth * 5; // shrug emoji
         },
         currentPointsOfInterest() {
-            // interface logic
-            if (this.isMidZoom) {
-                return this.collage.pois.level3.concat(this.collage.pois.level0);
-            } else if (this.zoomLevel == 0 && !this.isMidZoom) {
-                return this.collage.pois.level3.concat(this.collage.pois.level0);
+            if (this.zoomLevel == 0) {
+                return this.currentIsland.pointsOfInterest;
             } else {
                 return this.collage.pois.level3.filter(
                     p =>
-                        p.x > this.currentlyCenteredMap.x &&
-                        p.x < this.currentlyCenteredMap.x + 1024 &&
-                        p.y > this.currentlyCenteredMap.y &&
-                        p.y < this.currentlyCenteredMap.y + 1024
+                        p.x > this.currentlyCenteredMap.x - 1024 &&
+                        p.x < this.currentlyCenteredMap.x + 2048 &&
+                        p.y > this.currentlyCenteredMap.y - 1024 &&
+                        p.y < this.currentlyCenteredMap.y + 2048
                 );
             }
         },
         currentlyCenteredMap() {
-            // interface logic
+            // TODO: obviously, this can't always be at level 3
             const result = this.collage.getMapFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos,

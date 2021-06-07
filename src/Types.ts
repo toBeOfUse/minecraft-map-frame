@@ -81,10 +81,26 @@ interface Map {
   file: String;
 }
 
+interface PointOfInterest {
+  x: number;
+  y: number;
+  text: String;
+}
+
 class Island {
   private level: number;
   private maps: Set<Map>;
-  private mapIndex: Set<String>;
+
+  // Islands should be understood as having references to points of interest, not as
+  // owning them; multiple islands can share points of interest if the islands are of
+  // maps at different zoom levels
+  pointsOfInterest: PointOfInterest[];
+
+  // this stores strings created by the coordsToID method; its purpose is to allow
+  // for quick (constant-time) checks to see whether a map with certain coords is
+  // part of a specific island object or not
+  private localMapIndex: Set<String>;
+
   // this stores the map corners that lie along an outer edge of the island. they are
   // stored in clockwise winding order. The "edges" of the island can be said to be
   // the lines lying between each "corner".
@@ -108,15 +124,20 @@ class Island {
     corners: [number, number];
   }[];
 
+  // it is sad that this is essentially a duplicate of the getEdgeLength method in
+  // MapCollage
   get edgeLength() {
     return 128 * 2 ** this.level;
   }
 
+  static globalMapIndex: Record<string, Island> = {};
+
   constructor(level: number) {
     this.level = level;
     this.maps = new Set();
+    this.pointsOfInterest = [];
     this.corners = [];
-    this.mapIndex = new Set();
+    this.localMapIndex = new Set();
 
     // see lengthy explanation above (where these fields are declared)
     this.cornerOffsets = [
@@ -134,19 +155,32 @@ class Island {
     ];
   }
 
-  private coordsToID(coords: Coords): string {
+  private static coordsToID(coords: Coords): string {
     return coords.x + "," + coords.y;
+  }
+
+  private static globalCoordsToID(level: number, coords: Coords): string {
+    return level + "," + Island.coordsToID(coords);
+  }
+
+  static getIslandContainingMap(mapLevel: number, mapCoords: Coords): Island {
+    return Island.globalMapIndex[this.globalCoordsToID(mapLevel, mapCoords)];
   }
 
   addMap(map: Map): void {
     this.maps.add(map);
-    this.mapIndex.add(this.coordsToID(map));
+    this.localMapIndex.add(Island.coordsToID(map));
+    Island.globalMapIndex[Island.globalCoordsToID(this.level, map)] = this;
   }
 
   addMaps(maps: Iterable<Map>) {
     for (const map of maps) {
       this.addMap(map);
     }
+  }
+
+  addPOI(poi: PointOfInterest) {
+    this.pointsOfInterest.push(poi);
   }
 
   findEdges(): void {
@@ -158,7 +192,7 @@ class Island {
       }));
       for (const offset of this.coordsToCheckForEdges) {
         const coordsToCheck = { x: offset.x + map.x, y: offset.y + map.y };
-        if (!this.mapIndex.has(this.coordsToID(coordsToCheck))) {
+        if (!this.localMapIndex.has(Island.coordsToID(coordsToCheck))) {
           const corner1Coords = cornerCoords[offset.corners[0]];
           const corner1 = new Corner(corner1Coords.x, corner1Coords.y);
 
@@ -210,6 +244,10 @@ class Island {
       };
       v2meta.sign = Math.sign(v2[v2meta.direction]);
 
+      // TODO: make this more comprehensible by using the principle that every sign
+      // and direction arrangement that exists in a (clockwise, like our winding
+      // order) walk around a square is a convex corner, and every one that isn't is
+      // a concave corner
       if (v1meta.direction == v2meta.direction) {
         corner1.angle = CornerType.Straight;
       } else if (v1meta.direction == "x" && v2meta.direction == "y") {
@@ -247,4 +285,5 @@ export {
   Island,
   Coords,
   clamp,
+  PointOfInterest,
 };
