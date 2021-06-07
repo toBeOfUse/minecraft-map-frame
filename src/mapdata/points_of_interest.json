@@ -78,7 +78,7 @@
 		{
 			"x": -13.44,
 			"y": -66.08,
-			"text": "cassie's ravine"
+			"text": "cassie's ravine (feat. mitchama tunnel access)"
 		},
 		{
 			"x": -825.52,
@@ -86,9 +86,14 @@
 			"text": "plains biome"
 		},
 		{
-			"x": -990.64,
-			"y": -791.84,
+			"x": -975.86,
+			"y": -719.34,
 			"text": "the sandy desert"
+		},
+		{
+			"x": -1013.59,
+			"y": -909.47,
+			"text": "spidery mineshaft & ravine & bed & breakfast"
 		},
 		{
 			"x": -779.6,
@@ -238,7 +243,7 @@
 		{
 			"x": 2001.2,
 			"y": 78.4,
-			"text": "the plain plains"
+			"text": "the savvy savanna"
 		},
 		{
 			"x": -1093.47,
@@ -254,6 +259,226 @@
 			"x": 425.99,
 			"y": 504.46,
 			"text": "mitchama canal junction"
+		},
+		{
+			"x": 2968.63,
+			"y": 1304.22,
+			"text": "the vatican"
+		},
+		{
+			"x": 2752.85,
+			"y": 572.36,
+			"text": "gravity feed mountains"
+		},
+		{
+			"x": 2579.32,
+			"y": 747.4,
+			"text": "complementary colors ravine"
+		},
+		{
+			"x": 2283.55,
+			"y": 207.18,
+			"text": "blueflower swamp"
+		},
+		{
+			"x": 2897.71,
+			"y": 762.49,
+			"text": "the rms titanic"
+		},
+		{
+			"x": 2856.97,
+			"y": 815.31,
+			"text": "pumpkintown"
+		},
+		{
+			"x": 2517.45,
+			"y": -477.9,
+			"text": "turtle towers"
+		},
+		{
+			"x": 2380.13,
+			"y": -497.51,
+			"text": "redstone ravine entrance island"
+		},
+		{
+			"x": 2319.77,
+			"y": -710.28,
+			"text": "sunk sand structure"
+		},
+		{
+			"x": 2645.71,
+			"y": -426.59,
+			"text": "gerudo town"
+		},
+		{
+			"x": 2743.79,
+			"y": -251.55,
+			"text": "the watery well"
+		},
+		{
+			"x": 2168.87,
+			"y": -535.24,
+			"text": "mean green ravine"
+		},
+		{
+			"x": 2389.18,
+			"y": -1808.83,
+			"text": "bi-biome cleft"
+		},
+		{
+			"x": 2671.36,
+			"y": -1611.15,
+			"text": "mountain-town"
+		},
+		{
+			"x": 2793.59,
+			"y": -1440.63,
+			"text": "brutalist surrealism"
+		},
+		{
+			"x": 2362.02,
+			"y": -1301.8,
+			"text": "skysea village"
+		},
+		{
+			"x": 2642.69,
+			"y": -1940.11,
+			"text": "desert pyramid scheme"
+		},
+		{
+			"x": 2829.81,
+			"y": -1095.07,
+			"text": "the lonely acacia savanna"
+		},
+		{
+			"x": 1222.73,
+			"y": -1316.89,
+			"text": "the hms sinkytowne"
+		},
+		{
+			"x": 1732.77,
+			"y": -1674.53,
+			"text": "beached village"
+		},
+		{
+			"x": -1108.65,
+			"y": -106.69,
+			"text": "ice farm farm"
+		},
+		{
+			"x": -1179.58,
+			"y": -201.75,
+			"text": "ice farm broken portal"
+		},
+		{
+			"x": -870.23,
+			"y": -91.6,
+			"text": "munnel (mitchama tunnel) emergence"
+		},
+		{
+			"x": -1991.41,
+			"y": 480.31,
+			"text": "irregular ice island"
+		},
+		{
+			"x": -1371.22,
+			"y": 917.92,
+			"text": "polar bear residence"
+		},
+		{
+			"x": -1822.41,
+			"y": 269.05,
+			"text": "hay bale hovel"
+		},
+		{
+			"x": 1204.63,
+			"y": -1956.71,
+			"text": "center for the drowned"
+		},
+		{
+			"x": 475.78,
+			"y": 1088.43,
+			"text": "sunflower sunlands"
+		},
+		{
+			"x": 400.33,
+			"y": 1690.52,
+			"text": "the pointy mountain"
+		},
+		{
+			"x": 427.5,
+			"y": 1429.47,
+			"text": "trapdoor town"
+		},
+		{
+			"x": 1441.54,
+			"y": -778.19,
+			"text": "million guardian ruins"
+		},
+		{
+			"x": 1441.54,
+			"y": 1076.36,
+			"text": "the straight and narrow ravine"
+		},
+		{
+			"x": 1689.01,
+			"y": 1978.74,
+			"text": "gravel field mountain"
+		},
+		{
+			"x": 1770.5,
+			"y": 1363.07,
+			"text": "susurrus swamp"
+		},
+		{
+			"x": 1637.71,
+			"y": 1539.62,
+			"text": "ruined portal float"
+		},
+		{
+			"x": -117.25,
+			"y": 1343.45,
+			"text": "octoberville"
+		},
+		{
+			"x": -843.07,
+			"y": 1867.07,
+			"text": "normietown"
+		},
+		{
+			"x": -301.35,
+			"y": 1240.84,
+			"text": "look before you ravine"
+		},
+		{
+			"x": -687.65,
+			"y": 1746.35,
+			"text": "donkey sighting"
+		},
+		{
+			"x": -1481.37,
+			"y": -328.51,
+			"text": "pillager tower (unpillaged)"
+		},
+		{
+			"x": -1463.27,
+			"y": -917.01,
+			"text": "acacia town (pretty)"
+		},
+		{
+			"x": -1156.94,
+			"y": -787.24,
+			"text": "desert pyramid 2: tokyo drift"
+		},
+		{
+			"x": -1991.41,
+			"y": -993.97,
+			"text": "painted desert gateway"
+		},
+		{
+			"x": -1829.95,
+			"y": -120.27,
+			"text": "fountain mountain village"
 		}
 	],
 	"level0": [
