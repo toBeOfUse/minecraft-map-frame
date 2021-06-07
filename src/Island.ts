@@ -1,5 +1,13 @@
 import { Map, Corner, CornerType, PointOfInterest, Coords } from "./Types";
 
+/**
+ * objects of this class correspond to contiguous groups of maps. island objects
+ * store references to the maps within them and Corner objects that implicitly define
+ * their borders, which is useful for drawing borders around them and for restricting
+ * map panning to the bounds of a particular island. the public static properties and
+ * methods of the Island class can be used to look up what island a given map belongs
+ * to on demand.
+ */
 export default class Island {
   private level: number;
   private maps: Set<Map>;

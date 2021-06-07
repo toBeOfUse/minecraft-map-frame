@@ -27,6 +27,15 @@ interface ScaleInfo {
   edgeLengthPx: number;
 }
 
+/**
+ * this class stores our rendering primitives (maps and points of interest) and
+ * translates their coordinates from the internal block-based coordinate system to
+ * pixel-based coordinates we can put into CSS, and vice-versa. it also divides up
+ * maps and the points of interest that are on them into contiguous groups
+ * represented by objects of the Island class, with which you can interact either
+ * directly through the islands property or through the Island class' static methods.
+ * for most practical purposes, this class should be used as a singleton.
+ */
 export default class MapCollage {
   maps: MapsByLevel;
   pois: POIsByLevel;

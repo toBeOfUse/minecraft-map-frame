@@ -1,6 +1,8 @@
+// complex types
 import Island from "./Island";
 import MapCollage from "./MapCollage";
 
+// simple cartesian grid types
 interface CSSDimensions {
   width: string;
   height: string;
@@ -55,6 +57,7 @@ interface Coords {
   y: number;
 }
 
+// types used by the Island class to implicitly draw borders around Island objects
 enum CornerType {
   Unset,
   Straight,
@@ -78,6 +81,7 @@ class Corner {
   }
 }
 
+// types to be rendered; based on the structure of the objects in the corresponding json files
 interface Map {
   x: number;
   y: number;
