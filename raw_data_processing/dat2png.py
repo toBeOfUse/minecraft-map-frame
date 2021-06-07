@@ -70,7 +70,7 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
     # form -64 + (sideLength)(distanceFromOrigin//sideLength), so that a level 0
     # (128x128) map made less than a side length away from the origin will be
     # centered on it (thus having a top left corner at -64, -64.) This is excessively
-    # complex, and in this application the top left corner of a map that contains the
+    # complex, so in this application the top left corner of a map that contains the
     # in-game origin will always have coordinates 0, 0. the coordinates of said top
     # left corner are what we are storing, here.
     relative_x = int(map_x_center - side_length/2 + 64)
@@ -81,7 +81,7 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
 
     image_bytes = bytearray(128*128*4)
     blanks_encountered = 0
-    max_blanks = 128*128/2
+    max_blanks = 128*128/4
     for i in range(0, len(color_codes)*4, 4):
         image_bytes[i:i+3] = color_chart[color_codes[int(i//4)]]
         if color_chart[color_codes[int(i//4)]] == b"\xff\xff\xff\x00":
@@ -121,25 +121,21 @@ def get_coords(map_info):
 
 redundant_files = []
 for scale_level in processed_maps.values():
-    scale_level.sort(key=get_coords)
+    # sort the maps so that maps with the same coords are next to each other and
+    # within groups of maps with the same coords, they are sorted newest to oldest.
+
+    # potential TODO: if the pixels in two maps of the same area are identical, the
+    # more-filled-out map should take precedence regardless of whether it's newer,
+    # because the newer map doesn't have anything new. this might take a while to
+    # determine, though; map comparisons would have to be done byte-by-byte so that
+    # pixels that are transparent in either map could be skipped
+    scale_level.sort(key=lambda x: (get_coords(x), -int(x["id"])))
     i = 1
     while i < len(scale_level):
         if get_coords(scale_level[i]) == get_coords(scale_level[i-1]):
-            # order the two maps occupying the same coordinates by id; this means
-            # that sorted_maps[0] will be older than sorted_maps[1]
-            sorted_maps = sorted(
-                [scale_level[i], scale_level[i-1]], key=lambda x: int(x["id"]))
-            # unless the newer map has more than 5 percent more of the map not filled
-            # out, keep it
-            if sorted_maps[1]["blank_pixels"] < sorted_maps[0]["blank_pixels"]-0.05*128**2:
-                redundant_files.append(sorted_maps[0]["file"])
-                scale_level.remove(sorted_maps[0])
-            # otherwise, only keep the map that is most filled out
-            else:
-                if scale_level[i]["blank_pixels"] > scale_level[i-1]["blank_pixels"]:
-                    redundant_files.append(scale_level.pop(i)["file"])
-                else:
-                    redundant_files.append(scale_level.pop(i-1)["file"])
+            # mark older maps with the same coords as newer ones as redundant
+            redundant_files.append(scale_level[i]["file"])
+            scale_level.pop(i)
         else:
             i += 1
 
@@ -148,6 +144,7 @@ for scale_level in processed_maps.values():
 
 for file in redundant_files:
     try:
+        print("removing redundant map", file)
         Path(file).unlink()
     except:
         print("could not delete redundant file " + file)
