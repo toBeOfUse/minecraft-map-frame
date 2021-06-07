@@ -100,8 +100,7 @@ import { vueWindowSizeMixin } from "vue-window-size";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.json";
 import SubMapOutlines from "./SubMapOutlines.vue";
-import MapCollage from "./MapCollage.ts";
-import { Position, Dimensions, Island, clamp } from "./Types.ts";
+import { MapCollage, Position, Dimensions, Island, clamp } from "./Types.ts";
 
 export default {
     name: "App",
@@ -218,6 +217,7 @@ export default {
                     console.log("map at this position was clicked", x, y);
                     this.lastZoomedInOnSubMap = [x, y];
                     this.isMidZoom = true;
+                    this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             this.zoomLevel = 0;
@@ -228,7 +228,6 @@ export default {
                                 0,
                                 new Dimensions(this.windowWidth, this.windowHeight)
                             );
-                            this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                             this.$refs.map.addEventListener("transitionend", event => {
                                 if (event.target === event.currentTarget) {
                                     this.isMidZoom = false;
@@ -247,20 +246,25 @@ export default {
                 this.outliningSubMaps = true;
             } else {
                 this.isMidZoom = true;
+                // this will have to be changed if we add support for multiple level 3
+                // islands
+                this.currentIsland = this.collage.islands.level3[0];
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
+                        const currentLevel3Map = this.collage.getMapFromViewportPos(
+                            new Position(this.windowWidth / 2, this.windowHeight / 2),
+                            this.fullMapPos,
+                            3
+                        );
                         this.zoomLevel = 3;
+                        this.outliningSubMaps = false;
                         // this.edgeLength updated when this.zoomLevel did
                         this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                        this.outliningSubMaps = false;
                         this.fullMapPos = this.collage.getPosCenteredOn(
-                            this.currentlyCenteredMap,
+                            currentLevel3Map,
                             3,
                             new Dimensions(this.windowWidth, this.windowHeight)
                         );
-                        // this will have to be changed if we add support for multiple level 3
-                        // islands
-                        this.currentIsland = this.collage.islands.level3[0];
                         this.$refs.map.addEventListener("transitionend", event => {
                             if (event.target === event.currentTarget) {
                                 this.isMidZoom = false;
@@ -274,7 +278,7 @@ export default {
             // interface logic
             return this.zoomLevel == 0
                 ? 0.3
-                : map.x == this.currentlyCenteredMap.x && map.y == this.currentlyCenteredMap.y
+                : map.x == this.currentlyCenteredMap?.x && map.y == this.currentlyCenteredMap?.y
                 ? 1
                 : 0.7;
         },
@@ -310,9 +314,11 @@ export default {
             return this.subMapBorderWidth * 5; // shrug emoji
         },
         currentPointsOfInterest() {
-            if (this.zoomLevel == 0) {
+            if (this.zoomLevel == 0 || this.isMidZoom) {
                 return this.currentIsland.pointsOfInterest;
-            } else {
+            } else if (this.currentlyCenteredMap) {
+                // TODO: improve this filtration system to not require a linear
+                // search every time the currently centered map changes
                 return this.collage.pois.level3.filter(
                     p =>
                         p.x > this.currentlyCenteredMap.x - 1024 &&
@@ -320,6 +326,9 @@ export default {
                         p.y > this.currentlyCenteredMap.y - 1024 &&
                         p.y < this.currentlyCenteredMap.y + 2048
                 );
+            } else {
+                // this should not happen
+                return [];
             }
         },
         currentlyCenteredMap() {
