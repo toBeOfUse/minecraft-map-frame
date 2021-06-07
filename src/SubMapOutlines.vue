@@ -10,8 +10,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import MapCollage from "./MapCollage";
-import { Dimensions, Map, Coords, Position, CornerType } from "./Types";
+import { MapCollage, Dimensions, Map, Coords, Position, CornerType } from "./Types";
 const comp = Vue.extend({
     name: "SubMapOutlines",
     props: {

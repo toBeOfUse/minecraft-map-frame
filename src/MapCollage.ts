@@ -1,7 +1,4 @@
 import {
-  Corner,
-  CornerType,
-  CSSPosition,
   PointOfInterest,
   Dimensions,
   Position,
