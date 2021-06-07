@@ -12,7 +12,7 @@
 import Vue from "vue";
 import { MapCollage, Dimensions, Map, Coords, Position, CornerType } from "./Types";
 const comp = Vue.extend({
-    name: "SubMapOutlines",
+    name: "MapOutlines",
     props: {
         collage: {
             type: MapCollage,

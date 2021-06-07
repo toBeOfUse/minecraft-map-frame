@@ -50,7 +50,7 @@
                     opacity: zoomLevel == 0 ? 1 : 0,
                 }"
             />
-            <sub-map-outlines
+            <MapOutlines
                 :zoomLevel="0"
                 :subMapBorderWidth="subMapBorderWidth"
                 :collage="collage"
@@ -61,7 +61,7 @@
                 }"
             />
             <!--
-            <sub-map-outlines
+            <MapOutlines
                 :zoomLevel="3"
                 :subMapBorderWidth="fullMapBorderWidth"
                 :collage="collage"
@@ -80,8 +80,11 @@
                 </span>
             </div>
         </div>
-        <span v-if="mouseOverMap && !deployed" id="cornerDisplay">
-            {{ mouseX.toFixed(2) + ", " + mouseY.toFixed(2) }}
+        <span id="cornerDisplay">
+            <span v-if="currentlyCenteredMap">#{{ currentlyCenteredMap.id }}</span>
+            <span v-if="mouseOverMap && !deployed">
+                {{ mouseX.toFixed(2) + ", " + mouseY.toFixed(2) }}
+            </span>
         </span>
         <img
             :style="{
@@ -99,12 +102,12 @@
 import { vueWindowSizeMixin } from "vue-window-size";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.json";
-import SubMapOutlines from "./SubMapOutlines.vue";
+import MapOutlines from "./MapOutlines.vue";
 import { MapCollage, Position, Dimensions, Island, clamp } from "./Types.ts";
 
 export default {
     name: "App",
-    components: { SubMapOutlines },
+    components: { MapOutlines },
     data: () => ({
         collage: null,
         mouseOverMap: false,
