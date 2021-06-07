@@ -22,7 +22,7 @@ const comp = Vue.extend({
             type: Number,
             required: true,
         },
-        subMapBorderWidth: {
+        borderWidth: {
             type: Number,
             required: true,
         },
@@ -31,6 +31,7 @@ const comp = Vue.extend({
         return {
             viewBoxDimensions: {} as Dimensions,
             subMapEdgeLength: 0 as number,
+            savedCornerPositions: {} as Record<string, Coords>,
         };
     },
     created(): void {
@@ -39,13 +40,26 @@ const comp = Vue.extend({
         // css properties from its parent component. Resizing the svg element this
         // way prevents weird artifacts during width and height transitions.
         this.viewBoxDimensions = new Dimensions(
-            this.collage.fullMapDimensions.width + this.subMapBorderWidth * 2,
-            this.collage.fullMapDimensions.height + this.subMapBorderWidth * 2
+            this.collage.fullMapDimensions.width + this.borderWidth * 2,
+            this.collage.fullMapDimensions.height + this.borderWidth * 2
         );
         this.subMapEdgeLength =
             this.collage.getEdgeLength(this.zoomLevel) * this.collage.pxPerBlock;
-        // TODO: freeze the results of calling getPosWithinCollage with all the
-        // available corners; then use that data during getSubMapBorders
+        // save/index the results of calling getPosWithinCollage with all the
+        // available corners; then use that data during getSubMapBorders. this is in
+        // accordance with the above
+        for (const island of this.collage.islands.level0) {
+            for (const corner of island.corners) {
+                const cornerCoords = this.collage.getPosWithinCollage(corner).asCoords();
+                // adjust for the fact that the outline overlay svg extends
+                // towards the left and towards the top of the underlying map by
+                // this.borderWidth px (so that it could display borders to
+                // the left of and above every map)
+                cornerCoords.x += this.borderWidth;
+                cornerCoords.y += this.borderWidth;
+                this.savedCornerPositions[corner.x + "," + corner.y] = cornerCoords;
+            }
+        }
     },
     methods: {
         subMapHasAdjacent(subMap: Map, dx: number, dy: number): boolean {
@@ -80,37 +94,29 @@ const comp = Vue.extend({
                     const normalVectorDirection = parseInt(normalVector.substring(0, 1) + "1");
 
                     const innerBorder = [
-                        this.collage.getPosWithinCollage(cornerFrom).asCoords(),
-                        this.collage.getPosWithinCollage(cornerTo).asCoords(),
+                        // we need to copy these objects to get away with doing math
+                        // to them below, since the next edge will use one of the
+                        // same corners and will need the correct coordinates for it
+                        { ...this.savedCornerPositions[cornerFrom.x + "," + cornerFrom.y] },
+                        { ...this.savedCornerPositions[cornerTo.x + "," + cornerTo.y] },
                     ];
 
-                    // adjust for the fact that the outline overlay svg extends
-                    // towards the left and towards the top of the underlying map by
-                    // this.subMapBorderWidth px (so that it could display borders to
-                    // the left of and above every map)
-                    innerBorder[0].x += this.subMapBorderWidth;
-                    innerBorder[0].y += this.subMapBorderWidth;
-                    innerBorder[1].x += this.subMapBorderWidth;
-                    innerBorder[1].y += this.subMapBorderWidth;
-
                     // deep copy the inner border, and then translate it by
-                    // this.subMapBorderWidth px in the direction of the normal
+                    // this.borderWidth px in the direction of the normal
                     // vector
                     const outerBorder = [
                         new Position(innerBorder[0].x, innerBorder[0].y).asCoords(),
                         new Position(innerBorder[1].x, innerBorder[1].y).asCoords(),
                     ];
-                    outerBorder[0][normalVectorAxis] +=
-                        normalVectorDirection * this.subMapBorderWidth;
-                    outerBorder[1][normalVectorAxis] +=
-                        normalVectorDirection * this.subMapBorderWidth;
+                    outerBorder[0][normalVectorAxis] += normalVectorDirection * this.borderWidth;
+                    outerBorder[1][normalVectorAxis] += normalVectorDirection * this.borderWidth;
 
                     // if the corner we're drawing the line To is convex, extend it
                     // out a little further along the direction that the edge is in
                     // to cover the corner
                     if (cornerTo.angle == CornerType.Convex) {
-                        outerBorder[1][mainAxis] += direction * this.subMapBorderWidth;
-                        innerBorder[1][mainAxis] += direction * this.subMapBorderWidth;
+                        outerBorder[1][mainAxis] += direction * this.borderWidth;
+                        innerBorder[1][mainAxis] += direction * this.borderWidth;
                     }
 
                     // find the point at the top left of our border rectangle (lowest

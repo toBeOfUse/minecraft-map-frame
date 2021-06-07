@@ -52,7 +52,7 @@
             />
             <MapOutlines
                 :zoomLevel="0"
-                :subMapBorderWidth="subMapBorderWidth"
+                :borderWidth="subMapBorderWidth"
                 :collage="collage"
                 :style="{
                     visiblity: outliningSubMaps ? '' : 'hidden',
@@ -287,12 +287,13 @@ export default {
         },
         getOutlinePos(zoomLevel) {
             const borderWidth = zoomLevel == 3 ? this.fullMapBorderWidth : this.subMapBorderWidth;
+            const scaleFactor = this.zoomLevel == 3 ? 1 : 8;
             return {
                 position: "absolute",
-                left: -borderWidth + "px",
-                top: -borderWidth + "px",
-                width: "calc(100% + " + borderWidth * 2 + "px)",
-                height: "calc(100% + " + borderWidth * 2 + "px)"
+                left: -borderWidth * scaleFactor + "px",
+                top: -borderWidth * scaleFactor + "px",
+                width: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)",
+                height: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)"
             };
         }
     },
