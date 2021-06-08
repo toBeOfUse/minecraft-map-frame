@@ -57,7 +57,7 @@ interface Coords {
   y: number;
 }
 
-// types used by the Island class to implicitly draw borders around Island objects
+// types used by the Island class to draw borders around Island objects
 enum CornerType {
   Unset,
   Straight,
@@ -81,6 +81,84 @@ class Corner {
   }
 }
 
+class Line {
+  // we need to be able to index our lines by their left-most x coordinate and by
+  // their upper-most y coordinate, so these two numbers are ordered least to
+  // greatest. (the second number in the tuple is there for the hasHeight and
+  // hasWidth properties.)
+  xRange: [number, number];
+  yRange: [number, number];
+  get hasWidth() {
+    return this.xRange[0] !== this.xRange[1];
+  }
+  get hasHeight() {
+    return this.yRange[0] !== this.yRange[1];
+  }
+  get width() {
+    return this.xRange[1] - this.xRange[0];
+  }
+  get height() {
+    return this.yRange[1] - this.yRange[0];
+  }
+
+  constructor(
+    public x1: number,
+    public y1: number,
+    public x2: number,
+    public y2: number
+  ) {
+    this.xRange = [Math.min(x1, x2), Math.max(x1, x2)];
+    this.yRange = [Math.min(y1, y2), Math.max(y1, y2)];
+  }
+  // returns the x-coordinate of the point on the line segment that is on the
+  // horizontal line for the given y-coordinate. returns NaN in the case of a
+  // nonsensical query.
+  xAt(y: number): number {
+    if (!this.hasHeight || y < this.yRange[0] || y > this.yRange[1]) {
+      return NaN;
+    } else {
+      return ((y - this.yRange[0]) / this.height) * this.width + this.xRange[0];
+    }
+  }
+  yAt(x: number): number {
+    if (!this.hasWidth || x < this.xRange[0] || x > this.xRange[1]) {
+      return NaN;
+    } else {
+      return ((x - this.xRange[0]) / this.width) * this.height + this.yRange[0];
+    }
+  }
+}
+
+class Shape {
+  // xIndex allows you to look up horizontal and diagonal lines by their left-most x
+  // coordinate, yielding an array of lines sorted by their upper-most y coordinate
+  xIndex: Record<number, Line[]> = {};
+  // yIndex allows you to look up vertical and diagonal lines by their upper-most y
+  // coordinate, yielding an array of lines sorted by their left-most x coordinate
+  yIndex: Record<number, Line[]> = {};
+  constructor(public lines: Line[]) {
+    for (const line of lines) {
+      if (line.hasHeight) {
+        if (line.yRange[0] in this.yIndex) {
+          this.yIndex[line.yRange[0]].push(line);
+          this.yIndex[line.yRange[0]].sort((a, b) => a.xRange[0] - b.xRange[0]);
+        } else {
+          this.yIndex[line.yRange[0]] = [line];
+        }
+      }
+
+      if (line.hasWidth) {
+        if (line.xRange[0] in this.xIndex) {
+          this.xIndex[line.xRange[0]].push(line);
+          this.xIndex[line.xRange[0]].sort((a, b) => a.yRange[0] - b.yRange[0]);
+        } else {
+          this.xIndex[line.xRange[0]] = [line];
+        }
+      }
+    }
+  }
+}
+
 // types to be rendered; based on the structure of the objects in the corresponding json files
 interface Map {
   x: number;
@@ -99,6 +177,13 @@ function clamp(input: number, min: number, max: number) {
   return Math.max(min, Math.min(input, max));
 }
 
+/**
+ * modulus function that works for negative numbers
+ */
+function mod(n: number, m: number) {
+  return ((n % m) + m) % m;
+}
+
 export {
   CSSDimensions,
   CSSPosition,
@@ -110,6 +195,9 @@ export {
   Island,
   Coords,
   clamp,
+  mod,
   PointOfInterest,
   MapCollage,
+  Line,
+  Shape,
 };

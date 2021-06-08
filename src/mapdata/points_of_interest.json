@@ -83,7 +83,7 @@
 		{
 			"x": -825.52,
 			"y": -596.08,
-			"text": "plains biome"
+			"text": "the sultry savanna/acacia zone"
 		},
 		{
 			"x": -975.86,
@@ -348,7 +348,7 @@
 		{
 			"x": 2829.81,
 			"y": -1095.07,
-			"text": "the lonely acacia savanna"
+			"text": "the lonely acacia"
 		},
 		{
 			"x": 1222.73,
@@ -374,6 +374,11 @@
 			"x": -870.23,
 			"y": -91.6,
 			"text": "munnel (mitchama tunnel) emergence"
+		},
+		{
+			"x": -844.58,
+			"y": -161.01,
+			"text": "skeleton spawner (underground, in a cave)"
 		},
 		{
 			"x": -1991.41,

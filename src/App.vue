@@ -145,7 +145,6 @@ export default {
     },
     methods: {
         handleMouseMove(event) {
-            // interface logic
             if (!this.deployed) {
                 const eventPos = this.collage.getCoordsWithinCollageFromViewportPos(
                     new Position(event.clientX, event.clientY),
@@ -183,7 +182,6 @@ export default {
             }
         },
         startPanning(event) {
-            // interface logic
             if (event.touches && event.touches.length > 1) {
                 return;
             }
@@ -196,7 +194,6 @@ export default {
                 : event.touches[0]?.pageY;
         },
         handleMapClick(event) {
-            // interface logic
             if (!this.deployed && navigator.clipboard) {
                 const coords = JSON.stringify(
                     {
@@ -244,7 +241,6 @@ export default {
             }
         },
         magnifyingGlassClick() {
-            // interface logic
             if (this.zoomLevel !== 0) {
                 this.outliningSubMaps = true;
             } else {
@@ -278,7 +274,6 @@ export default {
             }
         },
         getLevel3MapOpacity(map) {
-            // interface logic
             return this.zoomLevel == 0
                 ? 0.3
                 : map.x == this.currentlyCenteredMap?.x && map.y == this.currentlyCenteredMap?.y
@@ -331,34 +326,77 @@ export default {
                         p.y < this.currentlyCenteredMap.y + 2048
                 );
             } else {
-                // this should not happen
+                // this will happen when a person is cutting a corner and thus the
+                // center of the map is over nothing. TODO: figure out make work
+                // better
                 return [];
             }
         },
         currentlyCenteredMap() {
-            // TODO: obviously, this can't always be at level 3
+            // TODO: change this to be responsive to zoom level so that the ids of
+            // level 0 maps can be displayed
             const result = this.collage.getMapFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos,
                 3
             );
-            if (!result) {
-                console.error("could not find a map at the center of the viewport");
-            }
             return result;
         },
         currentPanningBounds() {
-            // interface logic
-            return {
-                lowerXBound: -Infinity,
-                upperXBound: Infinity,
-                lowerYBound: -Infinity,
-                upperYBound: Infinity
+            // translate the point at the center of the viewport into the map collage's
+            // coordinate system
+            const centerPoint = new Position(this.windowWidth / 2, this.windowHeight / 2);
+            const coordsWithinCollage = this.collage.getCoordsWithinCollageFromViewportPos(
+                centerPoint,
+                this.fullMapPos
+            );
+            // round the coordinates of the point at the center of the viewport down to
+            // retrieve the upper left corner of the map that is currently centered
+            // at whatever zoom level we are at
+            const mapX =
+                Math.floor(coordsWithinCollage.x / this.collage.getEdgeLength(this.zoomLevel)) *
+                this.collage.getEdgeLength(this.zoomLevel);
+            const mapY =
+                Math.floor(coordsWithinCollage.y / this.collage.getEdgeLength(this.zoomLevel)) *
+                this.collage.getEdgeLength(this.zoomLevel);
+            // use the islandShape object's properties to retrieve the lines that
+            // bound the current island that are directly left and right and directly
+            // below and above the current center-of-the-viewport point
+            const xBoundLines = this.currentIsland.islandShape.yIndex[mapY];
+            const yBoundLines = this.currentIsland.islandShape.xIndex[mapX];
+            // determine the minimum x and y values and the maximum x and y values
+            // that the center-of-the-viewport can have in the collage coordinate
+            // system while still being over the current island
+            const mapSpaceLowerBounds = {
+                x: xBoundLines[0].xAt(coordsWithinCollage.y),
+                y: yBoundLines[0].yAt(coordsWithinCollage.x)
             };
-        },
-        currentSubMapIsland() {
-            // TODO: put in code to get this info from this.collage
-            return undefined;
+            const mapSpaceUpperBounds = {
+                x: xBoundLines[xBoundLines.length - 1].xAt(coordsWithinCollage.y),
+                y: yBoundLines[yBoundLines.length - 1].yAt(coordsWithinCollage.x)
+            };
+            // translate those minimums and maximum into pixel coordinates relative
+            // to the top left of the viewport
+            const screenSpaceLowerBounds = this.collage.getPosWithinCollage(mapSpaceLowerBounds);
+            screenSpaceLowerBounds._left += this.fullMapPos.left;
+            screenSpaceLowerBounds._top += this.fullMapPos.top;
+            const screenSpaceUpperBounds = this.collage.getPosWithinCollage(mapSpaceUpperBounds);
+            screenSpaceUpperBounds._left += this.fullMapPos.left;
+            screenSpaceUpperBounds._top += this.fullMapPos.top;
+            // translate the pixel coordinates establishing the minimums and maximums
+            // for the center point of the screen into pixel coordinate bounds for
+            // the placement of the map. the + 1s are a hack to keep the user from
+            // panning onto the right and top edges of the current island, which are
+            // a sort of edge case
+            return {
+                lowerXBound:
+                    this.fullMapPos.left - (screenSpaceUpperBounds.left - centerPoint.left) + 1,
+                upperXBound:
+                    this.fullMapPos.left + (centerPoint.left - screenSpaceLowerBounds.left),
+                lowerYBound:
+                    this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
+                upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top)
+            };
         }
     },
     mixins: [vueWindowSizeMixin]

@@ -1,4 +1,13 @@
-import { Map, Corner, CornerType, PointOfInterest, Coords } from "./Types";
+import {
+  Map,
+  Corner,
+  CornerType,
+  PointOfInterest,
+  Coords,
+  Line,
+  mod,
+  Shape,
+} from "./Types";
 
 /**
  * objects of this class correspond to contiguous groups of maps. island objects
@@ -10,22 +19,26 @@ import { Map, Corner, CornerType, PointOfInterest, Coords } from "./Types";
  */
 export default class Island {
   private level: number;
-  private maps: Set<Map>;
+  private maps: Set<Map> = new Set();
 
   // Islands should be understood as having references to points of interest, not as
   // owning them; multiple islands can share points of interest if the islands are of
   // maps at different zoom levels
-  pointsOfInterest: PointOfInterest[];
+  pointsOfInterest: PointOfInterest[] = [];
 
   // this stores strings created by the coordsToID method; its purpose is to allow
   // for quick (constant-time) checks to see whether a map with certain coords is
   // part of a specific island object or not
-  private localMapIndex: Set<String>;
+  private localMapIndex: Set<String> = new Set();
 
   // this stores the map corners that lie along an outer edge of the island. they are
-  // stored in clockwise winding order. The "edges" of the island can be said to be
-  // the lines lying between each "corner".
-  corners: Corner[];
+  // stored in clockwise winding order. The borders of the island can be said to be
+  // the lines lying between each "corner". This array is not populated until
+  // findEdges is called
+  corners: Corner[] = [];
+
+  // this is null if findEdges has not yet been called
+  islandShape: Shape | null = null;
 
   // the following two fields store coordinates that are meant to be used relative to
   // a map's base coordinates. the first stores the relative position of each corner
@@ -55,10 +68,6 @@ export default class Island {
 
   constructor(level: number) {
     this.level = level;
-    this.maps = new Set();
-    this.pointsOfInterest = [];
-    this.corners = [];
-    this.localMapIndex = new Set();
 
     // see lengthy explanation above (where these fields are declared)
     this.cornerOffsets = [
@@ -101,6 +110,8 @@ export default class Island {
   }
 
   addPOI(poi: PointOfInterest) {
+    // to be extra safe, we could verify here that the point of interest actually
+    // belongs on this island
     this.pointsOfInterest.push(poi);
   }
 
@@ -138,8 +149,6 @@ export default class Island {
         console.error("could not find corner to follow", lookingFor);
       }
     }
-
-    const mod = (n: number, m: number) => ((n % m) + m) % m;
 
     for (let i = 0; i < sortedCorners.length; i++) {
       const corner0 = sortedCorners[mod(i - 1, sortedCorners.length)];
@@ -187,5 +196,30 @@ export default class Island {
     }
 
     this.corners = sortedCorners;
+
+    // if there is an island like this:
+    //  _________
+    // |    |    |
+    // |____|____|
+    //      |    |
+    //      |____|
+    // we want the island shape to cut the convex corner located in the middle, so
+    // that the user can go from the bottom right sub-map directly along the diagonal
+    // to the top left sub-map. we could create a full-on convex hull, but it's
+    // simpler just to make lines that skip the convex corners and thus only have
+    // horizontal, vertical, or 45 degree angle lines.
+
+    const shapeCorners = sortedCorners.filter(
+      (c) => c.angle !== CornerType.Concave
+    );
+    const shapeLines = [];
+    for (let i = 0; i < shapeCorners.length; i++) {
+      const cornerFrom = shapeCorners[i];
+      const cornerTo = shapeCorners[(i + 1) % shapeCorners.length];
+      shapeLines.push(
+        new Line(cornerFrom.x, cornerFrom.y, cornerTo.x, cornerTo.y)
+      );
+    }
+    this.islandShape = Object.freeze(new Shape(shapeLines));
   }
 }
