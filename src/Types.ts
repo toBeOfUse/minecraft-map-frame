@@ -117,14 +117,22 @@ class Line {
     if (!this.hasHeight || y < this.yRange[0] || y > this.yRange[1]) {
       return NaN;
     } else {
-      return ((y - this.yRange[0]) / this.height) * this.width + this.xRange[0];
+      // figure out how far along the line the given y coordinate places us, on a
+      // scale from 0-1 (if the weight is 0, we are at the same vertical position as
+      // the first point in the line; if the weight is 1, we are at the same vertical
+      // position as the second point in the line; the rest of the possibilities
+      // exist in between)
+      const weight = Math.abs(y - this.y1) / this.height;
+      // linearly interpolate between the x coordinates by applying the weight
+      return this.x2 * weight + this.x1 * (1 - weight);
     }
   }
   yAt(x: number): number {
     if (!this.hasWidth || x < this.xRange[0] || x > this.xRange[1]) {
       return NaN;
     } else {
-      return ((x - this.xRange[0]) / this.width) * this.height + this.yRange[0];
+      const weight = Math.abs(x - this.x1) / this.width;
+      return this.y2 * weight + this.y1 * (1 - weight);
     }
   }
 }
