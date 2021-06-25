@@ -12,6 +12,9 @@ import re
 from collections import defaultdict
 import gzip
 
+# MUST be a multiple of 128 (the edge length of the maps in the DATs)
+MAP_SIZE_PX = 1024
+
 
 def nbt_search(nbt_bytes, key, value_type):
     # using .find to scan through the whole bytes object for each separate key seems
@@ -29,15 +32,19 @@ def nbt_search(nbt_bytes, key, value_type):
         return nbt_bytes[pos+4:pos+4+size]
 
 
+# obtain the look-up table that converts dat data into colors
 with open("./colorchart.json") as color_chart_file:
     color_chart = json.load(color_chart_file)
 
 for i in range(len(color_chart)):
     color_chart[i] = bytes(int(x) for x in color_chart[i].split(", "))
 
+# regular expression that extracts the id of a map from the filename of a .dat that
+# contains a map
 map_file_re = re.compile(r"map_(\d+).dat")
 
 processed_maps = defaultdict(list)
+unused_maps = defaultdict(list)
 
 try:
     with open("./skip_these_maps.json") as blacklist_file:
@@ -45,13 +52,9 @@ try:
 except:
     skips = []
 
-for file in Path('./put_raw_data_here/').glob("map_*.dat"):
-
-    map_id_match = map_file_re.search(str(file))
-    map_id = map_id_match[1] or "no_id"
-    if int(map_id) in skips:
-        print("skipping map "+str(file)+" in accordance with config file")
-        continue
+map_dats = list(Path('./put_raw_data_here/').glob("map_*.dat"))
+for i, file in enumerate(map_dats):
+    progress_string = f" ({i+1}/{len(map_dats)})"
 
     with open(file, "rb") as data_file:
         raw_data = gzip.decompress(data_file.read())
@@ -76,6 +79,25 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
     relative_x = int(map_x_center - side_length/2 + 64)
     relative_y = int(map_z_center - side_length/2 + 64)
 
+    map_id_match = map_file_re.search(str(file))
+    map_id = map_id_match[1] or "no_id"
+
+    map_image_path = f"../public/maps/level{map_scale}_{relative_x},{relative_y}_{map_id}.png"
+
+    map_object = {
+        "id": map_id,
+        "x": relative_x,
+        "y": relative_y,
+    }
+
+    if int(map_id) in skips:
+        print("skipping map "+str(file) +
+              " in accordance with config file"+progress_string)
+        map_desc = f"level{map_scale}_{relative_x},{relative_y}"
+        unused_maps[map_desc].append(
+            map_object | {"deliberately_skipped": True})
+        continue
+
     color_codes = nbt_search(raw_data, b'colors', 'bytes')
     assert len(color_codes) == 128*128
 
@@ -90,64 +112,76 @@ for file in Path('./put_raw_data_here/').glob("map_*.dat"):
             break
 
     if not (blanks_encountered > max_blanks):
-        map_id_match = map_file_re.search(str(file))
-        map_id = map_id_match[1] or "no_id"
-
-        map_image_filename = f"../public/maps/level{map_scale}_{relative_x},{relative_y}_{map_id}.png"
 
         map_image = Image.frombytes("RGBA", (128, 128), bytes(image_bytes))
-        map_image = map_image.resize((1024, 1024), resample=Image.NEAREST)
-        map_image.save(map_image_filename, optimize=True)
+        map_image = map_image.resize(
+            (MAP_SIZE_PX, MAP_SIZE_PX), resample=Image.NEAREST)
+        map_image.save(map_image_path, optimize=True)
 
-        processed_maps["level"+str(map_scale)].append({
-            "id": map_id,
-            "x": relative_x,
-            "y": relative_y,
-            "file": map_image_filename,
-            "blank_pixels": blanks_encountered
-        })
-
-        print("converted "+file.name)
+        print("converted "+file.name+progress_string)
+        processed_maps[f"level{map_scale}"].append(
+            map_object | {"path": map_image_path}
+        )
 
     else:
-        print(file.name+" was mostly blank")
+        print(file.name+" was mostly blank; discarding"+progress_string)
 
-print("removing redundant maps...")
+print("removing unused maps...")
 
 
-def get_coords(map_info):
+def get_coords_string(map_info):
     return f"{map_info['x']},{map_info['y']}"
 
 
-redundant_files = []
-for scale_level in processed_maps.values():
+for scale_level, maps in processed_maps.items():
     # sort the maps so that maps with the same coords are next to each other and
-    # within groups of maps with the same coords, they are sorted newest to oldest.
-
-    # potential TODO: if the pixels in two maps of the same area are identical, the
-    # more-filled-out map should take precedence regardless of whether it's newer,
-    # because the newer map doesn't have anything new. this might take a while to
-    # determine, though; map comparisons would have to be done byte-by-byte so that
-    # pixels that are transparent in either map could be skipped
-    scale_level.sort(key=lambda x: (get_coords(x), -int(x["id"])))
+    # within groups of maps with the same coords, they are sorted newest to oldest
+    # based on their ids.
+    maps.sort(key=lambda x: (get_coords_string(x), -int(x["id"])))
     i = 1
-    while i < len(scale_level):
-        if get_coords(scale_level[i]) == get_coords(scale_level[i-1]):
-            # mark older maps with the same coords as newer ones as redundant
-            redundant_files.append(scale_level[i]["file"])
-            scale_level.pop(i)
+    while i < len(maps):
+        if get_coords_string(maps[i]) == get_coords_string(maps[i-1]):
+            # mark older maps with the same coords as newer ones as unused
+            map_desc = f"{scale_level}_{maps[i]['x']},{maps[i]['y']}"
+            unused_maps[map_desc].append(
+                maps[i] | {"deliberately_skipped": False})
+            maps.pop(i)
         else:
             i += 1
 
-    for final_map_data in scale_level:
-        final_map_data["file"] = final_map_data["file"].split("/")[-1]
+    for final_map_data in maps:
+        final_map_data["file"] = final_map_data["path"].split("/")[-1]
 
-for file in redundant_files:
-    try:
-        print("removing redundant map", file)
-        Path(file).unlink()
-    except:
-        print("could not delete redundant file " + file)
+processed_maps["unused_maps"] = unused_maps
+
+# try to remove any actual files that were generated for maps that ended up unused
+for unused_map in sum(unused_maps.values(), []):
+    if "path" in unused_map:
+        path = unused_map["path"]
+        try:
+            print("removing unused map", path)
+            Path(path).unlink()
+            del unused_map["path"]
+            del unused_map["file"]
+        except:
+            print("could not delete unused file", path)
+
+print("creating composite map...")
+lowest_x = min(level3Map["x"] for level3Map in processed_maps["level3"])
+lowest_y = min(level3Map["y"] for level3Map in processed_maps["level3"])
+highest_x = max(level3Map["x"] for level3Map in processed_maps["level3"])
+highest_y = max(level3Map["y"] for level3Map in processed_maps["level3"])
+full_map_size = ((highest_x-lowest_x+MAP_SIZE_PX),
+                 (highest_y-lowest_y+MAP_SIZE_PX))
+print("composite map will be", full_map_size[0], "by", full_map_size[1])
+full_map_image = Image.new("RGBA", full_map_size, (255, 255, 255, 0))
+for i, level3_map in enumerate(processed_maps["level3"]):
+    level3_map_image = Image.open(level3_map["path"])
+    full_map_image.paste(
+        level3_map_image, (level3_map["x"]-lowest_x, level3_map["y"]-lowest_y))
+    print(f"\rpasted in {i+1}/{len(processed_maps['level3'])}", end="")
+full_map_image.save("../public/maps/full_map_level_3.png")
+print()
 
 with open("../src/mapdata/processed_maps.json", "w+") as output_record:
     json.dump(processed_maps, output_record)
