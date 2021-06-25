@@ -25,18 +25,54 @@
                 panning = false;
             "
         >
-            <img
-                v-for="map in collage.maps.level3"
-                :key="map.file"
-                :src="'maps/' + map.file"
-                :style="{
-                    opacity: getLevel3MapOpacity(map),
-                    width: edgeLength + 'px',
-                    height: edgeLength + 'px',
-                    ...collage.getPosWithinCollage(map).toCSS(),
-                }"
-                class="subMap"
-            />
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                preserveAspectRatio="none"
+                :viewBox="mapViewBox"
+                :width="collage.fullMapDimensions.width"
+                :height="collage.fullMapDimensions.height"
+                style="position: absolute; left: 0; top: 0"
+                id="bigMap"
+            >
+                <mask id="islands">
+                    <rect
+                        :x="collage.lowestMapCoords.x"
+                        :y="collage.lowestMapCoords.y"
+                        width="100%"
+                        height="100%"
+                        fill="#555"
+                    />
+                    <template v-if="outliningSubMaps">
+                        <polygon
+                            v-for="(island, i) in collage.islands.level0"
+                            :key="i"
+                            fill="white"
+                            :points="island.corners.map((c) => c.x + ',' + c.y).join(' ')"
+                        />
+                    </template>
+                </mask>
+                <image
+                    href="/maps/full_map_level_3.png"
+                    :x="collage.lowestMapCoords.x"
+                    :y="collage.lowestMapCoords.y"
+                    width="100%"
+                    height="100%"
+                    mask="url(#islands)"
+                />
+            </svg>
+            <transition name="fade">
+                <img
+                    v-if="currentlyCenteredMap && !outliningSubMaps && !isMidZoom"
+                    :src="'maps/' + currentlyCenteredMap.file"
+                    :key="currentlyCenteredMap.file"
+                    :style="{
+                        width: edgeLength + 'px',
+                        height: edgeLength + 'px',
+                        ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
+                    }"
+                    class="subMap"
+                />
+            </transition>
             <img
                 v-for="subMap in collage.maps.level0"
                 :key="subMap.file"
@@ -74,7 +110,11 @@
                 v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
             >
-                <img src="marker.png" style="height: 100%; width: 100%" class="markerImage" />
+                <img
+                    :src="markerIcons[location.type]"
+                    style="height: 100%; width: 100%"
+                    class="markerImage"
+                />
                 <span class="caption">
                     {{ location.text }}
                 </span>
@@ -122,7 +162,11 @@ export default {
         lastPanningX: -1,
         lastPanningY: -1,
         currentIsland: null,
-        lastZoomedInOnSubMap: [NaN, NaN]
+        lastZoomedInOnSubMap: [NaN, NaN],
+        markerIcons: {
+            normal: "/marker.png",
+            village: "/emerald.png"
+        }
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -141,6 +185,9 @@ export default {
     mounted() {
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
+        }
+        for (const map of this.collage.maps.level3) {
+            new Image().src = "/maps/" + map.file;
         }
     },
     methods: {
@@ -281,6 +328,8 @@ export default {
                 : 0.7;
         },
         getOutlinePos(zoomLevel) {
+            // position outline so it sticks out of the sides of the map so that maps
+            // on the edge can be outlined
             const borderWidth = zoomLevel == 3 ? this.fullMapBorderWidth : this.subMapBorderWidth;
             const scaleFactor = this.zoomLevel == 3 ? 1 : 8;
             return {
@@ -312,9 +361,25 @@ export default {
         fullMapBorderWidth() {
             return this.subMapBorderWidth * 5; // shrug emoji
         },
+        mapViewBox() {
+            return (
+                this.collage.lowestMapCoords.x +
+                " " +
+                this.collage.lowestMapCoords.y +
+                " " +
+                (this.collage.highestMapCoords.x - this.collage.lowestMapCoords.x + 1024) +
+                " " +
+                (this.collage.highestMapCoords.y - this.collage.lowestMapCoords.y + 1024)
+            );
+        },
         currentPointsOfInterest() {
             if (this.zoomLevel == 0 || this.isMidZoom) {
                 return this.currentIsland.pointsOfInterest;
+            } else if (this.outliningSubMaps) {
+                return this.collage.islands.level0.reduce(
+                    (prev, current) => prev.concat(current.pointsOfInterest),
+                    []
+                );
             } else if (this.currentlyCenteredMap) {
                 // TODO: improve this filtration system to not require a linear
                 // search every time the currently centered map changes
@@ -397,6 +462,13 @@ export default {
                     this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
                 upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top)
             };
+            // break glass in case of debugging something completely different:
+            // return {
+            //     lowerXBound: -Infinity,
+            //     upperXBound: Infinity,
+            //     lowerYBound: -Infinity,
+            //     upperYBound: Infinity
+            // };
         }
     },
     mixins: [vueWindowSizeMixin]
@@ -415,6 +487,15 @@ export default {
 @mixin standard-transitions {
     transition-duration: 1s;
     transition-property: width, height, left, top, opacity, visibility;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.5s;
+}
+.fade-enter,
+.fade-leave-to {
+    opacity: 0;
 }
 
 html,
@@ -439,6 +520,9 @@ body {
     @include standard-transitions;
 }
 .subMapOutlineOverlay {
+    @include standard-transitions;
+}
+#bigMap {
     @include standard-transitions;
 }
 #cornerDisplay {
