@@ -426,7 +426,13 @@ export default {
                             ]
                         )
                         .toArray()
-                ).filter(poi => this.allowedPOITypes.includes(poi.type));
+                ).filter(
+                    poi =>
+                        this.allowedPOITypes.includes(poi.type) &&
+                        // redo y-tests because the Dexie query is not cooperating
+                        poi.y > viewportCenter.y - halfAScreen.height &&
+                        poi.y < viewportCenter.y + halfAScreen.height
+                );
             } else {
                 console.log("unsupported point of interest filtering mode:", mode);
             }
