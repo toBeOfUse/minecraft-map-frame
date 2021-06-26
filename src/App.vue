@@ -1,10 +1,6 @@
 <template>
     <div id="app" :class="zoomLevel == 0 ? 'appZoomedIn' : ''">
-        <span v-if="zoomLevel !== 0 && outliningSubMaps"
-            >Click within an outlined area to Zoom</span
-        >
         <div
-            ref="map"
             class="mapContainer"
             :class="isMidZoom && 'transitiony'"
             :style="{
@@ -24,6 +20,7 @@
                 mouseOverMap = false;
                 panning = false;
             "
+            @transitionend="zoomTransitionEnd"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -120,28 +117,24 @@
                 </span>
             </div>
         </div>
-        <span id="cornerDisplay">
-            <span v-if="currentlyCenteredMap">#{{ currentlyCenteredMap.id }}</span>
-            <span v-if="mouseOverMap && !deployed">
-                {{ mouseX.toFixed(2) + ", " + mouseY.toFixed(2) }}
-            </span>
-        </span>
-        <img
-            :style="{
-                right: '50px',
-                top: '50px',
-            }"
-            :src="zoomLevel == 0 ? 'zoomout.svg' : 'zoom.svg'"
-            id="zoomButton"
-            @click="magnifyingGlassClick"
-        />
+        <div id="cornerModal">
+            <span style="display: flex; align-items: center" @click="magnifyingGlassClick"
+                ><img
+                    :src="zoomLevel == 0 || outliningSubMaps ? 'zoomout.svg' : 'zoom.svg'"
+                    id="zoomButton"
+                />{{ zoomButtonText }}</span
+            >
+            <label><input type="checkbox" v-model="showVillages" />Villages</label>
+            <label><input type="checkbox" v-model="showMisc" />Other fun stuff</label>
+            <span v-if="currentlyCenteredMap">Map ID: #{{ currentlyCenteredMap.id }}</span>
+        </div>
     </div>
 </template>
 
 <script>
 import { vueWindowSizeMixin } from "vue-window-size";
 import availableMaps from "./mapdata/processed_maps.json";
-import pointsOfInterest from "./mapdata/points_of_interest.json";
+import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapOutlines from "./MapOutlines.vue";
 import { MapCollage, Position, Dimensions, Island, clamp } from "./Types.ts";
 
@@ -162,11 +155,14 @@ export default {
         lastPanningX: -1,
         lastPanningY: -1,
         currentIsland: null,
+        currentPointsOfInterest: [],
         lastZoomedInOnSubMap: [NaN, NaN],
         markerIcons: {
             normal: "/marker.png",
             village: "/emerald.png"
-        }
+        },
+        showVillages: true,
+        showMisc: true
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -189,6 +185,7 @@ export default {
         for (const map of this.collage.maps.level3) {
             new Image().src = "/maps/" + map.file;
         }
+        this.getCurrentPointsOfInterest("byProximity");
     },
     methods: {
         handleMouseMove(event) {
@@ -223,6 +220,10 @@ export default {
                         bounds.upperYBound
                     )
                 );
+
+                if (!this.outliningSubMaps) {
+                    this.getCurrentPointsOfInterest("byProximity");
+                }
 
                 this.lastPanningX = newX;
                 this.lastPanningY = newY;
@@ -265,20 +266,17 @@ export default {
                     this.lastZoomedInOnSubMap = [x, y];
                     this.isMidZoom = true;
                     this.currentIsland = Island.getIslandContainingMap(0, { x, y });
-                    requestAnimationFrame(() => {
+                    this.getCurrentPointsOfInterest("byIsland").then(() => {
                         requestAnimationFrame(() => {
-                            this.zoomLevel = 0;
-                            // this.edgeLength updated when this.zoomLevel did
-                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                            this.fullMapPos = this.collage.getPosCenteredOn(
-                                { x, y },
-                                0,
-                                new Dimensions(this.windowWidth, this.windowHeight)
-                            );
-                            this.$refs.map.addEventListener("transitionend", event => {
-                                if (event.target === event.currentTarget) {
-                                    this.isMidZoom = false;
-                                }
+                            requestAnimationFrame(() => {
+                                this.zoomLevel = 0;
+                                // this.edgeLength updated when this.zoomLevel did
+                                this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                                this.fullMapPos = this.collage.getPosCenteredOn(
+                                    { x, y },
+                                    0,
+                                    new Dimensions(this.windowWidth, this.windowHeight)
+                                );
                             });
                         });
                     });
@@ -289,35 +287,37 @@ export default {
         },
         magnifyingGlassClick() {
             if (this.zoomLevel !== 0) {
-                this.outliningSubMaps = true;
+                this.outliningSubMaps = !this.outliningSubMaps;
             } else {
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
                 // islands
                 this.currentIsland = this.collage.islands.level3[0];
-                requestAnimationFrame(() => {
+                this.getCurrentPointsOfInterest("byProximity").then(() => {
                     requestAnimationFrame(() => {
-                        const currentLevel3Map = this.collage.getMapFromViewportPos(
-                            new Position(this.windowWidth / 2, this.windowHeight / 2),
-                            this.fullMapPos,
-                            3
-                        );
-                        this.zoomLevel = 3;
-                        this.outliningSubMaps = false;
-                        // this.edgeLength updated when this.zoomLevel did
-                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                        this.fullMapPos = this.collage.getPosCenteredOn(
-                            currentLevel3Map,
-                            3,
-                            new Dimensions(this.windowWidth, this.windowHeight)
-                        );
-                        this.$refs.map.addEventListener("transitionend", event => {
-                            if (event.target === event.currentTarget) {
-                                this.isMidZoom = false;
-                            }
+                        requestAnimationFrame(() => {
+                            const currentLevel3Map = this.collage.getMapFromViewportPos(
+                                new Position(this.windowWidth / 2, this.windowHeight / 2),
+                                this.fullMapPos,
+                                3
+                            );
+                            this.zoomLevel = 3;
+                            this.outliningSubMaps = false;
+                            // this.edgeLength updated when this.zoomLevel did
+                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                            this.fullMapPos = this.collage.getPosCenteredOn(
+                                currentLevel3Map,
+                                3,
+                                new Dimensions(this.windowWidth, this.windowHeight)
+                            );
                         });
                     });
                 });
+            }
+        },
+        zoomTransitionEnd(event) {
+            if (event.target === event.currentTarget) {
+                this.isMidZoom = false;
             }
         },
         getLevel3MapOpacity(map) {
@@ -339,9 +339,66 @@ export default {
                 width: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)",
                 height: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)"
             };
+        },
+        async getCurrentPointsOfInterest(mode) {
+            // this function is called by mounted(), when zoomLevel goes from 0 to 3,
+            // when panning happens, or when outliningSubMaps goes from false to
+            // true
+            if (mode == "byIsland") {
+                this.currentPointsOfInterest = await this.collage.pois
+                    .where("island")
+                    .equals(this.currentIsland.id)
+                    .toArray();
+            } else if (mode == "allIslands") {
+                this.currentPointsOfInterest = await this.collage.pois
+                    .where("island")
+                    .notEqual(-1)
+                    .toArray();
+            } else if (mode == "byProximity") {
+                const viewportCenter = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(this.windowWidth / 2, this.windowHeight / 2),
+                    this.fullMapPos
+                );
+                const halfAScreen = new Dimensions(
+                    // hack to make sure that we always consider the viewport to be
+                    // zoomed out for this method (because we always use byIsland
+                    // when zoomed in and so byProximity means we are either zoomed
+                    // out or about to zoom out)
+                    (this.screenSizeInBlockUnits.width / 2) * (this.zoomLevel == 0 ? 8 : 1),
+                    (this.screenSizeInBlockUnits.height / 2) * (this.zoomLevel == 0 ? 8 : 1)
+                );
+                this.currentPointsOfInterest = await this.collage.pois
+                    .where("[level+x+y]")
+                    .between(
+                        [
+                            3,
+                            viewportCenter.x - halfAScreen.width,
+                            viewportCenter.y - halfAScreen.height
+                        ],
+                        [
+                            3,
+                            viewportCenter.x + halfAScreen.width,
+                            viewportCenter.y + halfAScreen.height
+                        ]
+                    )
+                    .toArray();
+                console.log(
+                    "retrieved current pois. there are",
+                    this.currentPointsOfInterest.length,
+                    "of them"
+                );
+            } else {
+                console.log("unsupported point of interest filtering mode:", mode);
+            }
         }
     },
     computed: {
+        screenSizeInBlockUnits() {
+            return new Dimensions(
+                this.windowWidth / this.collage.pxPerBlock,
+                this.windowHeight / this.collage.pxPerBlock
+            );
+        },
         edgeLength() {
             if (this.windowHeight > this.windowWidth) {
                 return 0.95 * this.windowWidth * (this.zoomLevel == 0 ? 8 : 1);
@@ -372,38 +429,13 @@ export default {
                 (this.collage.highestMapCoords.y - this.collage.lowestMapCoords.y + 1024)
             );
         },
-        currentPointsOfInterest() {
-            if (this.zoomLevel == 0 || this.isMidZoom) {
-                return this.currentIsland.pointsOfInterest;
-            } else if (this.outliningSubMaps) {
-                return this.collage.islands.level0.reduce(
-                    (prev, current) => prev.concat(current.pointsOfInterest),
-                    []
-                );
-            } else if (this.currentlyCenteredMap) {
-                // TODO: improve this filtration system to not require a linear
-                // search every time the currently centered map changes
-                return this.collage.pois.level3.filter(
-                    p =>
-                        p.x > this.currentlyCenteredMap.x - 1024 &&
-                        p.x < this.currentlyCenteredMap.x + 2048 &&
-                        p.y > this.currentlyCenteredMap.y - 1024 &&
-                        p.y < this.currentlyCenteredMap.y + 2048
-                );
-            } else {
-                // this will happen when a person is cutting a corner and thus the
-                // center of the map is over nothing. TODO: figure out make work
-                // better
-                return [];
-            }
-        },
         currentlyCenteredMap() {
             // TODO: change this to be responsive to zoom level so that the ids of
             // level 0 maps can be displayed
             const result = this.collage.getMapFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos,
-                3
+                this.zoomLevel
             );
             return result;
         },
@@ -469,6 +501,24 @@ export default {
             //     lowerYBound: -Infinity,
             //     upperYBound: Infinity
             // };
+        },
+        zoomButtonText() {
+            if (this.zoomLevel == 3) {
+                if (this.outliningSubMaps) {
+                    return "Click within an outlined area";
+                } else {
+                    return "Zoom In";
+                }
+            } else {
+                return "Zoom Out";
+            }
+        }
+    },
+    watch: {
+        outliningSubMaps(newValue, oldValue) {
+            if (oldValue === false && newValue === true) {
+                this.getCurrentPointsOfInterest("allIslands");
+            }
         }
     },
     mixins: [vueWindowSizeMixin]
@@ -510,7 +560,6 @@ body {
     width: 100%;
     height: 100%;
     position: relative;
-    text-align: center;
     font-family: "andada", serif;
 }
 .mapContainer {
@@ -531,10 +580,29 @@ body {
     bottom: 5px;
 }
 #zoomButton {
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
+    margin-right: 3px;
+    margin-left: 3px;
+}
+#cornerModal {
     position: fixed;
+    right: 50px;
+    top: 50px;
+    width: 150px;
+    background-color: peachpuff;
+    border-radius: 3px;
+    border: 2px solid black;
+    padding: 2.5px;
+    display: flex;
+    flex-direction: column;
     z-index: 12;
+    > * {
+        margin-bottom: 5px;
+    }
+    :last-child {
+        margin-bottom: 0;
+    }
 }
 .subMap {
     position: absolute;

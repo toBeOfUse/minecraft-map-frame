@@ -7,6 +7,8 @@ import {
   Coords,
 } from "./Types";
 
+import Dexie from "dexie";
+
 interface MapsByLevel {
   level0: Map[];
   level3: Map[];
@@ -17,14 +19,26 @@ interface IslandsByLevel {
   level3: Island[];
 }
 
-interface POIsByLevel {
-  level0: PointOfInterest[];
-  level3: PointOfInterest[];
-}
-
 interface ScaleInfo {
   mapLevel: number;
   edgeLengthPx: number;
+}
+
+class POIDB extends Dexie {
+  public POIs: Dexie.Table<PointOfInterest, number>;
+  constructor() {
+    super("POIDB");
+    this.version(3).stores({
+      POIs: "++id,[level+x+y],type,island",
+    });
+    this.POIs = this.table("POIs");
+    // clear out old pois from previous sessions
+    this.transaction("rw", this.POIs, () => {
+      this.POIs.toCollection().eachPrimaryKey((pk) => {
+        this.POIs.delete(pk);
+      });
+    });
+  }
 }
 
 /**
@@ -38,7 +52,7 @@ interface ScaleInfo {
  */
 export default class MapCollage {
   maps: MapsByLevel;
-  pois: POIsByLevel;
+  pois: Dexie.Table<PointOfInterest, number>;
   pxPerBlock: number;
 
   originMap: Map | undefined;
@@ -59,12 +73,11 @@ export default class MapCollage {
 
   constructor(
     maps: MapsByLevel,
-    pointsOfInterest: POIsByLevel,
+    pointsOfInterest: PointOfInterest[],
     sizing: ScaleInfo
   ) {
     console.log("COLLAGE: creating map collage object");
     this.maps = Object.freeze(maps);
-    this.pois = Object.freeze(pointsOfInterest);
     console.log(
       "COLLAGE: sizing information for converting blocks to pixels:",
       sizing
@@ -120,7 +133,7 @@ export default class MapCollage {
     // would occupy, check if the map exists, and look up the island containing it
     // and add the point to it.
 
-    for (const poi of this.pois.level0.concat(this.pois.level3)) {
+    for (const poi of pointsOfInterest) {
       const mapX =
         Math.floor(poi.x / this.getEdgeLength(0)) * this.getEdgeLength(0);
       const mapY =
@@ -129,6 +142,12 @@ export default class MapCollage {
         Island.getIslandContainingMap(0, { x: mapX, y: mapY }).addPOI(poi);
       }
     }
+
+    const db = new POIDB();
+    db.transaction("rw", db.POIs, () => {
+      db.POIs.bulkAdd(pointsOfInterest);
+    });
+    this.pois = db.POIs;
 
     Object.freeze(this.islands);
 
