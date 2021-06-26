@@ -118,14 +118,24 @@
             </div>
         </div>
         <div id="cornerModal">
-            <span style="display: flex; align-items: center" @click="magnifyingGlassClick"
+            <span
+                style="display: flex; align-items: center; cursor: pointer"
+                @click="magnifyingGlassClick"
                 ><img
                     :src="zoomLevel == 0 || outliningSubMaps ? 'zoomout.svg' : 'zoom.svg'"
                     id="zoomButton"
                 />{{ zoomButtonText }}</span
             >
-            <label><input type="checkbox" v-model="showVillages" />Villages</label>
-            <label><input type="checkbox" v-model="showMisc" />Other fun stuff</label>
+            <div class="rowMobile">
+                <label>
+                    <input type="checkbox" value="village" v-model="allowedPOITypes" />
+                    Villages
+                </label>
+                <label>
+                    <input type="checkbox" value="normal" v-model="allowedPOITypes" />
+                    Other fun stuff
+                </label>
+            </div>
             <span v-if="currentlyCenteredMap">Map ID: #{{ currentlyCenteredMap.id }}</span>
             <a target="_blank" href="travel_brochure_96dpi.pdf">Complimentary Brochure</a>
         </div>
@@ -586,11 +596,31 @@ body {
     margin-right: 3px;
     margin-left: 3px;
 }
+.rowMobile {
+    display: flex;
+    flex-direction: column;
+    @media (max-aspect-ratio: 1/1) {
+        flex-direction: row;
+        > label:not(:last-child) {
+            margin-right: 5px;
+        }
+    }
+}
 #cornerModal {
     position: fixed;
     right: 50px;
     top: 50px;
     width: 150px;
+    @media (max-aspect-ratio: 1/1) {
+        right: unset;
+        top: unset;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        font-size: 80%;
+        align-items: center;
+    }
     background-color: peachpuff;
     border-radius: 3px;
     border: 2px solid black;
