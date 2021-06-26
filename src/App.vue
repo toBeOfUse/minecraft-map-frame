@@ -49,7 +49,7 @@
                     </template>
                 </mask>
                 <image
-                    href="/maps/full_map_level_3.png"
+                    :href="fullMapImage"
                     :x="collage.lowestMapCoords.x"
                     :y="collage.lowestMapCoords.y"
                     width="100%"
@@ -60,7 +60,7 @@
             <transition name="fade">
                 <img
                     v-if="currentlyCenteredMap && !outliningSubMaps && !isMidZoom"
-                    :src="'maps/' + currentlyCenteredMap.file"
+                    :src="subMapImages[currentlyCenteredMap.file]"
                     :key="currentlyCenteredMap.file"
                     :style="{
                         width: edgeLength + 'px',
@@ -174,7 +174,9 @@ export default {
             village: "/emerald.png"
         },
         allowedPOITypes: Object.values(POIType),
-        poiTypeFilter: "byProximity" // or "byIsland" or "allIslands"
+        poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
+        fullMapImage: "/maps/full_map_level_3.png",
+        subMapImages: {}
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -189,13 +191,17 @@ export default {
         // this will have to be changed if we add support for multiple level 3
         // islands
         this.currentIsland = this.collage.islands.level3[0];
+        const fullMap = new Image();
+        fullMap.src = this.fullMapImage;
+        fullMap.onload = () => {
+            for (const map of availableMaps.level3) {
+                this.getSubMapImage(map, fullMap);
+            }
+        };
     },
     mounted() {
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
-        }
-        for (const map of this.collage.maps.level3) {
-            new Image().src = "/maps/" + map.file;
         }
         this.getCurrentPointsOfInterest();
     },
@@ -429,6 +435,27 @@ export default {
                 this.currentPointsOfInterest.length,
                 "of them"
             );
+        },
+        getSubMapImage(map, fullMapImage) {
+            const subMap = document.createElement("canvas");
+            subMap.width = 1024;
+            subMap.height = 1024;
+            subMap
+                .getContext("2d")
+                .drawImage(
+                    fullMapImage,
+                    map.x - this.collage.lowestMapCoords.x,
+                    map.y - this.collage.lowestMapCoords.y,
+                    1024,
+                    1024,
+                    0,
+                    0,
+                    1024,
+                    1024
+                );
+            subMap.toBlob(blob => {
+                this.subMapImages = { ...this.subMapImages, [map.file]: URL.createObjectURL(blob) };
+            });
         }
     },
     computed: {
@@ -469,8 +496,9 @@ export default {
             );
         },
         currentlyCenteredMap() {
-            // TODO: change this to be responsive to zoom level so that the ids of
-            // level 0 maps can be displayed
+            if (!this.collage) {
+                return undefined;
+            }
             const result = this.collage.getMapFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos,
