@@ -127,6 +127,7 @@
             <label><input type="checkbox" v-model="showVillages" />Villages</label>
             <label><input type="checkbox" v-model="showMisc" />Other fun stuff</label>
             <span v-if="currentlyCenteredMap">Map ID: #{{ currentlyCenteredMap.id }}</span>
+            <a target="_blank" href="travel_brochure_96dpi.pdf">Complimentary Brochure</a>
         </div>
     </div>
 </template>
