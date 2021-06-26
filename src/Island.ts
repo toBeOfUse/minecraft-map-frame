@@ -18,8 +18,11 @@ import {
  * to on demand.
  */
 export default class Island {
+  private static idSource: number = 0;
   private level: number;
   private maps: Set<Map> = new Set();
+
+  id: number;
 
   // Islands should be understood as having references to points of interest, not as
   // owning them; multiple islands can share points of interest if the islands are of
@@ -67,6 +70,8 @@ export default class Island {
   static globalMapIndex: Record<string, Island> = {};
 
   constructor(level: number) {
+    this.id = Island.idSource++;
+
     this.level = level;
 
     // see lengthy explanation above (where these fields are declared)
@@ -112,6 +117,7 @@ export default class Island {
   addPOI(poi: PointOfInterest) {
     // to be extra safe, we could verify here that the point of interest actually
     // belongs on this island
+    poi.island = this.id;
     this.pointsOfInterest.push(poi);
   }
 

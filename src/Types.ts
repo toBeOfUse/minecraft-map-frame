@@ -174,10 +174,34 @@ interface Map {
   file: String;
 }
 
-interface PointOfInterest {
+enum POIType {
+  Normal = "normal",
+  Village = "village",
+}
+
+interface StoredPOI {
   x: number;
   y: number;
   text: String;
+  type: POIType;
+}
+
+class PointOfInterest {
+  x: number;
+  y: number;
+  text: String;
+  type: POIType;
+  island: number;
+  level: 0 | 3;
+
+  constructor(record: StoredPOI, level: 0 | 3) {
+    this.x = record.x;
+    this.y = record.y;
+    this.text = record.text;
+    this.type = record.type;
+    this.island = -1;
+    this.level = level;
+  }
 }
 
 // sigh
@@ -205,6 +229,8 @@ export {
   clamp,
   mod,
   PointOfInterest,
+  StoredPOI,
+  POIType,
   MapCollage,
   Line,
   Shape,
