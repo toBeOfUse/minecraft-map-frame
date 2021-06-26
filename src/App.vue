@@ -148,6 +148,7 @@ import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapOutlines from "./MapOutlines.vue";
 import { MapCollage, Position, Dimensions, Island, clamp } from "./Types.ts";
+import { POIType } from "./Types";
 
 export default {
     name: "App",
@@ -172,8 +173,8 @@ export default {
             normal: "/marker.png",
             village: "/emerald.png"
         },
-        showVillages: true,
-        showMisc: true
+        allowedPOITypes: Object.values(POIType),
+        poiTypeFilter: "byProximity" // or "byIsland" or "allIslands"
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -196,7 +197,7 @@ export default {
         for (const map of this.collage.maps.level3) {
             new Image().src = "/maps/" + map.file;
         }
-        this.getCurrentPointsOfInterest("byProximity");
+        this.getCurrentPointsOfInterest();
     },
     methods: {
         handleMouseMove(event) {
@@ -233,7 +234,7 @@ export default {
                 );
 
                 if (!this.outliningSubMaps) {
-                    this.getCurrentPointsOfInterest("byProximity");
+                    this.getCurrentPointsOfInterest();
                 }
 
                 this.lastPanningX = newX;
@@ -351,19 +352,44 @@ export default {
                 height: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)"
             };
         },
-        async getCurrentPointsOfInterest(mode) {
-            // this function is called by mounted(), when zoomLevel goes from 0 to 3,
-            // when panning happens, or when outliningSubMaps goes from false to
-            // true
+        async getCurrentPointsOfInterest(mode = this.poiTypeFilter) {
+            // this function is called by mounted(), when showVillages or showMisc
+            // change, when poiTypeFilter changes, and while panning when zoomed out
+            this.poiTypeFilter = mode;
+            const possibleTypes = Object.values(POIType);
             if (mode == "byIsland") {
-                this.currentPointsOfInterest = await this.collage.pois
-                    .where("island")
-                    .equals(this.currentIsland.id)
-                    .toArray();
+                // allowed [island+type] combinations: the current island id and all
+                // allowed types
+                const allowedKeys = this.allowedPOITypes.map(type => [this.currentIsland.id, type]);
+                console.log("searching for [island+type] keys:", allowedKeys);
+                if (allowedKeys.length == 0) {
+                    this.currentPointsOfInterest = [];
+                } else {
+                    let query = this.collage.pois.where("[island+type]");
+                    if (allowedKeys.length == 1) {
+                        query = query.equals(...allowedKeys);
+                    } else {
+                        query = query.anyOf(...allowedKeys);
+                    }
+                    this.currentPointsOfInterest = await query.toArray();
+                }
             } else if (mode == "allIslands") {
+                const islandKeys = await this.collage.pois.orderBy("island").uniqueKeys();
+                const notAllowedTypes = possibleTypes.filter(
+                    t => !this.allowedPOITypes.includes(t)
+                );
+                // not allowed values for [island+type]: -1 and anything; 1-6 and the
+                // not currently allowed types
+                const notAllowedKeys = Object.values(POIType).map(type => [-1, type]);
+                for (const ik of islandKeys) {
+                    for (const nat of notAllowedTypes) {
+                        notAllowedKeys.push([ik, nat]);
+                    }
+                }
+                console.log("excluding [island+type] keys:", notAllowedKeys);
                 this.currentPointsOfInterest = await this.collage.pois
-                    .where("island")
-                    .notEqual(-1)
+                    .where("[island+type]")
+                    .noneOf(...notAllowedKeys)
                     .toArray();
             } else if (mode == "byProximity") {
                 const viewportCenter = this.collage.getCoordsWithinCollageFromViewportPos(
@@ -378,29 +404,31 @@ export default {
                     (this.screenSizeInBlockUnits.width / 2) * (this.zoomLevel == 0 ? 8 : 1),
                     (this.screenSizeInBlockUnits.height / 2) * (this.zoomLevel == 0 ? 8 : 1)
                 );
-                this.currentPointsOfInterest = await this.collage.pois
-                    .where("[level+x+y]")
-                    .between(
-                        [
-                            3,
-                            viewportCenter.x - halfAScreen.width,
-                            viewportCenter.y - halfAScreen.height
-                        ],
-                        [
-                            3,
-                            viewportCenter.x + halfAScreen.width,
-                            viewportCenter.y + halfAScreen.height
-                        ]
-                    )
-                    .toArray();
-                console.log(
-                    "retrieved current pois. there are",
-                    this.currentPointsOfInterest.length,
-                    "of them"
-                );
+                this.currentPointsOfInterest = (
+                    await this.collage.pois
+                        .where("[level+x+y]")
+                        .between(
+                            [
+                                3,
+                                viewportCenter.x - halfAScreen.width,
+                                viewportCenter.y - halfAScreen.height
+                            ],
+                            [
+                                3,
+                                viewportCenter.x + halfAScreen.width,
+                                viewportCenter.y + halfAScreen.height
+                            ]
+                        )
+                        .toArray()
+                ).filter(poi => this.allowedPOITypes.includes(poi.type));
             } else {
                 console.log("unsupported point of interest filtering mode:", mode);
             }
+            console.log(
+                "retrieved current pois. there are",
+                this.currentPointsOfInterest.length,
+                "of them"
+            );
         }
     },
     computed: {
@@ -530,6 +558,9 @@ export default {
             if (oldValue === false && newValue === true) {
                 this.getCurrentPointsOfInterest("allIslands");
             }
+        },
+        allowedPOITypes() {
+            this.getCurrentPointsOfInterest();
         }
     },
     mixins: [vueWindowSizeMixin]

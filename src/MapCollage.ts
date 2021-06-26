@@ -28,8 +28,8 @@ class POIDB extends Dexie {
   public POIs: Dexie.Table<PointOfInterest, number>;
   constructor() {
     super("POIDB");
-    this.version(3).stores({
-      POIs: "++id,[level+x+y],type,island",
+    this.version(4).stores({
+      POIs: "++id,[level+x+y],[island+type]",
     });
     this.POIs = this.table("POIs");
     // clear out old pois from previous sessions
