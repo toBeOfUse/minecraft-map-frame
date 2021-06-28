@@ -136,15 +136,13 @@
                     Other fun stuff
                 </label>
             </div>
-            <span v-if="currentlyCenteredMap">
+            <span v-if="currentlyCenteredMap" style="white-space: pre">
                 Map ID: #{{ currentlyCenteredMap.id }}
                 <br />
                 {{ collage.getEdgeLength(zoomLevel) }} x
                 {{ collage.getEdgeLength(zoomLevel) }} blocks
                 <br />
-                {{ getMinecraftCoordinates(currentlyCenteredMap)[0] }}
-                <br />
-                {{ getMinecraftCoordinates(currentlyCenteredMap)[1] }}
+                {{ getMinecraftCoordinates(currentlyCenteredMap) }}
             </span>
             <a target="_blank" href="travel_brochure_96dpi.pdf">Complimentary Brochure</a>
         </div>
@@ -369,10 +367,10 @@ export default {
         },
         getMinecraftCoordinates(map) {
             const edge = this.collage.getEdgeLength(this.zoomLevel);
-            return [
-                `x: ${map.x - 64} - ${map.x - 64 + edge}`,
-                `z: ${map.y - 64} - ${map.y - 64 + edge}`
-            ];
+            return (
+                `x: ${map.x - 64} thru ${map.x - 64 + edge}\n` +
+                `z: ${map.y - 64} thru ${map.y - 64 + edge}`
+            );
         },
         async getCurrentPointsOfInterest(mode = this.poiTypeFilter) {
             // this function is called by mounted(), when showVillages or showMisc
