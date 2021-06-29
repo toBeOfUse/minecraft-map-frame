@@ -614,6 +614,84 @@ const pois: PointOfInterest[] = [
     text: "mitchama railroad last stop",
     type: Normal,
   },
+  {
+    x: 2302.19,
+    y: -2138.22,
+    text: "amethyst cave (deep) (beware: cave spiders)",
+    type: Normal,
+  },
+  {
+    x: 2213.28,
+    y: -1768.94,
+    text: "turtles for days",
+    type: Normal,
+  },
+  {
+    x: 2147.07,
+    y: -2945.21,
+    text: "drowned village",
+    type: Normal,
+  },
+  {
+    x: 2062.4,
+    y: -2848.22,
+    text: "magma trench",
+    type: Normal,
+  },
+  {
+    x: 2194.8,
+    y: -2822.04,
+    text: "jungle ship",
+    type: Normal,
+  },
+  {
+    x: 2906.11,
+    y: -2092.26,
+    text: "broken portal dig site",
+    type: Normal,
+  },
+  {
+    x: 2909.19,
+    y: -2471.01,
+    text: "cliffside pyramid",
+    type: Normal,
+  },
+  {
+    x: 2801.41,
+    y: -2283.18,
+    text: "tinytown",
+    type: Village,
+  },
+  {
+    x: 3000.02,
+    y: -2977.54,
+    text: "savanna ravine",
+    type: Normal,
+  },
+  {
+    x: 2402.65,
+    y: -2745.06,
+    text: "incomplete ship",
+    type: Normal,
+  },
+  {
+    x: 2622.82,
+    y: -2815.88,
+    text: "Constantinople",
+    type: Village,
+  },
+  {
+    x: 2327.21,
+    y: -2081.49,
+    text: "chunk anomaly mining site",
+    type: Normal,
+  },
+  {
+    x: -881.35,
+    y: -220.09,
+    text: "there are straight-up a lot of caves in this area",
+    type: Normal,
+  },
 ]
   .map((p) => new PointOfInterest(p, 3))
   .concat(
@@ -808,6 +886,18 @@ const pois: PointOfInterest[] = [
         x: 35.34,
         y: -118.35,
         text: "sarah's abode",
+        type: Normal,
+      },
+      {
+        x: 2295.23,
+        y: -1310.99,
+        text: "sarah's Machine",
+        type: Normal,
+      },
+      {
+        x: 2208.63,
+        y: -1228.05,
+        text: "unethical experimentation",
         type: Normal,
       },
     ].map((p) => new PointOfInterest(p, 0))
