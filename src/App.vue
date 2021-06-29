@@ -181,7 +181,7 @@ export default {
         },
         allowedPOITypes: Object.values(POIType),
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
-        fullMapImage: "/maps/full_map_level_3.png",
+        fullMapImage: "/maps/" + availableMaps.full_map,
         subMapImages: {}
     }),
     created() {

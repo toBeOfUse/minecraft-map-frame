@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 from collections import defaultdict
 import gzip
+from hashlib import blake2b
+from base64 import urlsafe_b64encode as b64
 
 # MUST be a multiple of 128 (the edge length of the maps in the DATs)
 MAP_SIZE_PX = 1024
@@ -82,8 +84,6 @@ for i, file in enumerate(map_dats):
     map_id_match = map_file_re.search(str(file))
     map_id = map_id_match[1] or "no_id"
 
-    map_image_path = f"../public/maps/level{map_scale}_{relative_x},{relative_y}_{map_id}.png"
-
     map_object = {
         "id": map_id,
         "x": relative_x,
@@ -112,6 +112,10 @@ for i, file in enumerate(map_dats):
             break
 
     if not (blanks_encountered > max_blanks):
+        map_hash = b64(
+            blake2b(color_codes, digest_size=12).digest()).decode("utf-8")
+
+        map_image_path = f"../public/maps/level{map_scale}_{relative_x},{relative_y}_{map_id}.{map_hash}.png"
 
         map_image = Image.frombytes("RGBA", (128, 128), bytes(image_bytes))
         map_image = map_image.resize(
@@ -174,13 +178,19 @@ highest_y = max(level3Map["y"] for level3Map in processed_maps["level3"])
 full_map_size = ((highest_x-lowest_x+MAP_SIZE_PX),
                  (highest_y-lowest_y+MAP_SIZE_PX))
 print("composite map will be", full_map_size[0], "by", full_map_size[1])
+
 full_map_image = Image.new("RGBA", full_map_size, (255, 255, 255, 0))
 for i, level3_map in enumerate(processed_maps["level3"]):
     level3_map_image = Image.open(level3_map["path"])
     full_map_image.paste(
         level3_map_image, (level3_map["x"]-lowest_x, level3_map["y"]-lowest_y))
     print(f"\rpasted in {i+1}/{len(processed_maps['level3'])}", end="")
-full_map_image.save("../public/maps/full_map_level_3.png")
+
+full_map_hash = b64(blake2b(full_map_image.tobytes(),
+                    digest_size=12).digest()).decode("utf-8")
+full_map_path = f"../public/maps/full_map_level_3.{full_map_hash}.png"
+full_map_image.save(full_map_path)
+processed_maps["full_map"] = full_map_path.split('/').pop()
 print()
 
 with open("../src/mapdata/processed_maps.json", "w+") as output_record:
