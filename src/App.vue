@@ -96,7 +96,7 @@
             <!--
             <MapOutlines
                 :zoomLevel="3"
-                :subMapBorderWidth="fullMapBorderWidth"
+                :subMapBorderWidth=""
                 :collage="collage"
                 :style="getOutlinePos(3)"
             />
@@ -175,7 +175,6 @@ export default {
         lastPanningY: -1,
         currentIsland: null,
         currentPointsOfInterest: [],
-        lastZoomedInOnSubMap: [NaN, NaN],
         markerIcons: {
             normal: "/marker.png",
             village: "/emerald.png"
@@ -190,14 +189,51 @@ export default {
             mapLevel: 3,
             edgeLengthPx: this.edgeLength
         });
-        this.fullMapPos = this.collage.getPosCenteredOn(
-            { x: 0, y: 0 },
-            3,
-            new Dimensions(this.windowWidth, this.windowHeight)
-        );
-        // this will have to be changed if we add support for multiple level 3
-        // islands
-        this.currentIsland = this.collage.islands.level3[0];
+        const preAreaMatch = location.hash.match(/^#level(\d+)x(-?\d+)z(-?\d+)$/);
+        let successfullyLoadedNonDefaultStartingPoint = false;
+        if (preAreaMatch) {
+            const level = parseInt(preAreaMatch[1]);
+            // converting x and y from minecraft units to the coordinate system we're
+            // using for our maps (where the top left of any map that contains the
+            // origin lies at 0, 0)
+            const x = parseFloat(preAreaMatch[2]) + 64;
+            const y = parseFloat(preAreaMatch[3]) + 64;
+            const edge = this.collage.getEdgeLength(level);
+            const mapX = Math.floor(x / edge) * edge;
+            const mapY = Math.floor(y / edge) * edge;
+            let currentIsland;
+            if (level == 3) {
+                currentIsland = this.collage.islands.level3[0];
+            } else {
+                console.log("starting with map at level", level, "and coords", mapX, mapY);
+                currentIsland = Island.getIslandContainingMap(level, { x: mapX, y: mapY });
+                console.log("found island", currentIsland);
+            }
+            if (currentIsland) {
+                this.zoomLevel = level;
+                this.currentIsland = currentIsland;
+                if (level == 0) {
+                    this.outliningSubMaps = true;
+                    this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                    this.fullMapPos = this.collage.getPosCenteredOn(
+                        { x, y },
+                        new Dimensions(this.windowWidth, this.windowHeight)
+                    );
+                    this.poiTypeFilter = "byIsland";
+                }
+                successfullyLoadedNonDefaultStartingPoint = true;
+            }
+        }
+        if (!successfullyLoadedNonDefaultStartingPoint) {
+            this.fullMapPos = this.collage.getPosCenteredOnMap(
+                { x: 0, y: 0 },
+                3,
+                new Dimensions(this.windowWidth, this.windowHeight)
+            );
+            // this will have to be changed if we add support for multiple level 3
+            // islands
+            this.currentIsland = this.collage.islands.level3[0];
+        }
         const fullMap = new Image();
         fullMap.src = this.fullMapImage;
         fullMap.onload = () => {
@@ -288,7 +324,6 @@ export default {
                 if (clickedMap) {
                     const { x, y } = clickedMap;
                     console.log("map at this position was clicked", x, y);
-                    this.lastZoomedInOnSubMap = [x, y];
                     this.isMidZoom = true;
                     this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                     this.getCurrentPointsOfInterest("byIsland").then(() => {
@@ -297,7 +332,7 @@ export default {
                                 this.zoomLevel = 0;
                                 // this.edgeLength updated when this.zoomLevel did
                                 this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                                this.fullMapPos = this.collage.getPosCenteredOn(
+                                this.fullMapPos = this.collage.getPosCenteredOnMap(
                                     { x, y },
                                     0,
                                     new Dimensions(this.windowWidth, this.windowHeight)
@@ -330,7 +365,7 @@ export default {
                             this.outliningSubMaps = false;
                             // this.edgeLength updated when this.zoomLevel did
                             this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                            this.fullMapPos = this.collage.getPosCenteredOn(
+                            this.fullMapPos = this.collage.getPosCenteredOnMap(
                                 currentLevel3Map,
                                 3,
                                 new Dimensions(this.windowWidth, this.windowHeight)

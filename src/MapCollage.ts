@@ -217,7 +217,17 @@ export default class MapCollage {
     );
   }
 
-  getPosCenteredOn(
+  getPosCenteredOn(pointCoords: Coords, viewport: Dimensions): Position {
+    // returns the pixel values for the left and top css properties that, when given
+    // to the collage container, will center the specified point.
+    const { x, y } = this.getCoordsRelativeToCollage(pointCoords);
+    return new Position(
+      -x * this.pxPerBlock + viewport.width / 2,
+      -y * this.pxPerBlock + viewport.height / 2
+    );
+  }
+
+  getPosCenteredOnMap(
     mapCoords: Coords,
     mapLevel: number,
     viewport: Dimensions
