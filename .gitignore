@@ -3,6 +3,7 @@
 /raw_data_processing/skip_these_maps.json
 
 /build_all_local
+/public/maps/backup/*
 
 .DS_Store
 node_modules
