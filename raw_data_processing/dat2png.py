@@ -1,4 +1,4 @@
-"""this script expects to be in the same folder as a "put_raw_data_here" directory
+"""this script expects to be given a folder as a "put_raw_data_here" directory
 with files with the naming scheme map_00.dat (where any number can stand in for the
 00); such files can be found in the "data" folder where your minecraft level is
 stored. it then takes those files, generates pngs that depict the maps that they
@@ -13,8 +13,17 @@ from collections import defaultdict
 import gzip
 from hashlib import blake2b
 from base64 import urlsafe_b64encode as b64
+from argparse import ArgumentParser
 
-# MUST be a multiple of 128 (the edge length of the maps in the DATs)
+parser = ArgumentParser("Convert Minecraft DAT files named things like map_00.dat to PNGs")
+parser.add_argument(
+    "--raw_data_path", '-r', type=str,
+    help="path to the Minecraft DAT files you are converting")
+args = parser.parse_args()
+raw_data_path = args.raw_data_path
+
+
+# MUST be a multiple of 128 (the edge length in pixels of the maps in the DATs)
 MAP_SIZE_PX = 1024
 
 
@@ -62,7 +71,7 @@ try:
 except:
     skips = []
 
-map_dats = list(Path('./put_raw_data_here/').glob("map_*.dat"))
+map_dats = list(Path(raw_data_path).glob("map_*.dat"))
 for i, file in enumerate(map_dats):
     progress_string = f" ({i+1}/{len(map_dats)})"
 
