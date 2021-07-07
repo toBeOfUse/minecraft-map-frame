@@ -38,8 +38,16 @@ def nbt_search(nbt_bytes, key, value_type):
 with open("./colorchart.json") as color_chart_file:
     color_chart = json.load(color_chart_file)
 
-for i in range(len(color_chart)):
-    color_chart[i] = bytes(int(x) for x in color_chart[i].split(", "))
+
+def color_code_to_bytes(color_code):
+    if int(color_code//4) > len(color_chart)-1:
+        raise IndexError(
+            f"attempting to look up a color code that is not in the chart ({color_code})")
+    base_color = color_chart[int(color_code//4)]
+    modifier_code = color_code % 4
+    modifier = {0: 180, 1: 220, 2: 255, 3: 135}[modifier_code]
+    return bytes([int(x*modifier//255) for x in base_color[:3]]+[base_color[3]])
+
 
 # regular expression that extracts the id of a map from the filename of a .dat that
 # contains a map
@@ -105,8 +113,10 @@ for i, file in enumerate(map_dats):
     blanks_encountered = 0
     max_blanks = 128*128/4
     for i in range(0, len(color_codes)*4, 4):
-        image_bytes[i:i+3] = color_chart[color_codes[int(i//4)]]
-        if color_chart[color_codes[int(i//4)]] == b"\xff\xff\xff\x00":
+        color_code = color_codes[int(i//4)]
+        final_color = color_code_to_bytes(color_code)
+        image_bytes[i:i+3] = final_color
+        if final_color[3] == 0:
             blanks_encountered += 1
         if blanks_encountered > max_blanks:
             break
