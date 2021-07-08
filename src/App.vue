@@ -348,6 +348,7 @@ export default {
         magnifyingGlassClick() {
             if (this.zoomLevel !== 0) {
                 this.outliningSubMaps = !this.outliningSubMaps;
+                this.getCurrentPointsOfInterest("byProximity");
             } else {
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
