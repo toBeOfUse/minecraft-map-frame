@@ -22,6 +22,17 @@
             "
             @transitionend="zoomTransitionEnd"
         >
+            <img
+                v-for="map in collage.maps.level3"
+                :key="map.file"
+                :src="`maps/${map.file}`"
+                class="subMap"
+                :style="{
+                    ...collage.getPosWithinCollage(map).toCSS(),
+                    width: edgeLength + 'px',
+                    height: edgeLength + 'px',
+                }"
+            />
             <svg
                 xmlns="http://www.w3.org/2000/svg"
                 preserveAspectRatio="none"
@@ -43,17 +54,17 @@
                         <polygon
                             v-for="(island, i) in collage.islands.level0"
                             :key="i"
-                            fill="white"
+                            fill="black"
                             :points="island.corners.map((c) => c.x + ',' + c.y).join(' ')"
                         />
                     </template>
                 </mask>
-                <image
-                    :href="fullMapImage"
+                <rect
                     :x="collage.lowestMapCoords.x"
                     :y="collage.lowestMapCoords.y"
                     width="100%"
                     height="100%"
+                    fill="#ffffff"
                     mask="url(#islands)"
                 />
             </svg>
