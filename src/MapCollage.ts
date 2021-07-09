@@ -1,13 +1,13 @@
 import {
+  Map,
   PointOfInterest,
   Dimensions,
   Position,
-  Map,
-  Island,
   Coords,
   getEdgeLength,
   ItemsInLevel,
 } from "./Types";
+import Island from "./Island";
 
 import Flatbush from "flatbush";
 
@@ -37,7 +37,7 @@ class IndexedMapItems {
   constructor(itemGroups: ItemsInLevel<Map | PointOfInterest>[]) {
     for (const itemGroup of itemGroups) {
       const newIndex = new Flatbush(itemGroup.items.length);
-      if (itemGroup.items[0] instanceof Map) {
+      if ("file" in itemGroup.items[0]) {
         for (const item of itemGroup.items) {
           const edgeLength = getEdgeLength(itemGroup.level);
           newIndex.add(
@@ -49,7 +49,7 @@ class IndexedMapItems {
         }
         this.maps[itemGroup.level] = itemGroup as ItemsInLevel<Map>;
         this.mapIndex[itemGroup.level] = newIndex;
-      } else {
+      } else if ("text" in itemGroup.items[0]) {
         for (const item of itemGroup.items) {
           newIndex.add(item.x, item.y, item.x, item.y);
         }
@@ -57,6 +57,8 @@ class IndexedMapItems {
           PointOfInterest
         >;
         this.POIIndex[itemGroup.level] = newIndex;
+      } else {
+        console.error("failed to index group of strange items", itemGroup);
       }
       newIndex.finish();
     }
@@ -143,9 +145,12 @@ export default class MapCollage {
     mapsAsItems[0] = { level: 0, items: maps.level0 };
     mapsAsItems[3] = { level: 3, items: maps.level3 };
 
+    // Object.values makes these arrays no longer sparse
     this.items = new IndexedMapItems(
-      (mapsAsItems as ItemsInLevel<any>[]).concat(
-        pointsOfInterest as ItemsInLevel<any>[]
+      Object.values(
+        (mapsAsItems as ItemsInLevel<any>[]).concat(
+          pointsOfInterest as ItemsInLevel<any>[]
+        )
       )
     );
 
@@ -162,8 +167,6 @@ export default class MapCollage {
 
     console.log("COLLAGE: found origin map:", this.originMap);
 
-    const exes = this.items.maps[3].items.map((m) => m.x);
-    const whys = this.items.maps[3].items.map((m) => m.y);
     this.lowestMapCoords = {
       x: this.items.mapIndex[3].minX,
       y: this.items.mapIndex[3].minY,
@@ -308,7 +311,7 @@ export default class MapCollage {
     const halfEdge = getEdgeLength(level) / 2;
     return this.items.searchMaps(
       level,
-      x,
+      x + halfEdge,
       y + halfEdge,
       x + halfEdge,
       y + halfEdge
@@ -369,12 +372,12 @@ export default class MapCollage {
       viewportPos,
       collagePos
     );
-    this.items.searchMaps(
+    return this.items.searchMaps(
       mapLevel,
       coordsWithinCollage.x,
       coordsWithinCollage.y,
       coordsWithinCollage.x,
       coordsWithinCollage.y
-    );
+    )[0];
   }
 }
