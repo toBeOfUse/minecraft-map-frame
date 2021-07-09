@@ -10,6 +10,7 @@
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
     "@types/flatbush": "^3.3.0",
+    "circular-dependency-plugin": "^5.2.2",
     "core-js": "^3.6.5",
     "dexie": "^3.0.3",
     "flatbush": "^3.3.0",
