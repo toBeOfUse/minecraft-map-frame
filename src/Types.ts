@@ -204,6 +204,11 @@ class PointOfInterest {
   }
 }
 
+interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
+  level: number;
+  items: Type[];
+}
+
 // sigh
 function clamp(input: number, min: number, max: number) {
   return Math.max(min, Math.min(input, max));
