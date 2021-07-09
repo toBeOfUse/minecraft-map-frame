@@ -189,7 +189,8 @@ class PointOfInterest {
   y: number;
   text: String;
   type: POIType;
-  island: number;
+  islandIDs: number[] = [];
+  onlyLevel3: boolean = true;
   level: 0 | 3;
 
   constructor(record: StoredPOI, level: 0 | 3) {
@@ -197,8 +198,14 @@ class PointOfInterest {
     this.y = record.y;
     this.text = record.text;
     this.type = record.type;
-    this.island = -1;
     this.level = level;
+  }
+
+  isPartOfIsland(island: Island){
+    this.islandIDs.push(island.id);
+    if (island.level != 3) {
+      this.onlyLevel3 = false;
+    }
   }
 }
 

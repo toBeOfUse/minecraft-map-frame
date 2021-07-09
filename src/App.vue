@@ -538,33 +538,43 @@ export default {
             // };
         },
         currentPointsOfInterest() {
+            const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
+                new Position(0, 0),
+                this.fullMapPos
+            );
+            const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
+                new Position(this.windowWidth, this.windowHeight),
+                this.fullMapPos
+            );
+            let narrowedDownPoints = this.collage.items.searchPOIs(
+                3,
+                viewportMin.x,
+                viewportMin.y,
+                viewportMax.x,
+                viewportMax.y
+            );
+            if (this.outliningSubMaps) {
+                narrowedDownPoints = narrowedDownPoints.concat(
+                    this.collage.items.searchPOIs(
+                        0,
+                        viewportMin.x,
+                        viewportMin.y,
+                        viewportMax.x,
+                        viewportMax.y
+                    )
+                );
+            }
             const mode = this.poiTypeFilter;
-            let narrowedDownPoints;
             if (mode == "byIsland") {
-                narrowedDownPoints = this.currentIsland.pointsOfInterest;
+                narrowedDownPoints = narrowedDownPoints.filter(poi =>
+                    poi.islandIDs.includes(this.currentIsland.id)
+                );
             } else if (mode == "allIslands") {
-                narrowedDownPoints = this.collage.islands
-                    .map(g => g.items)
-                    .flat()
-                    .reduce((prev, current) => prev.concat(current.pointsOfInterest), []);
-            } else if (mode == "byProximity") {
-                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(0, 0),
-                    this.fullMapPos
-                );
-                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(this.windowWidth, this.windowHeight),
-                    this.fullMapPos
-                );
-                narrowedDownPoints = this.collage.items.searchPOIs(
-                    3,
-                    viewportMin.x,
-                    viewportMin.y,
-                    viewportMax.x,
-                    viewportMax.y
-                );
+                narrowedDownPoints = narrowedDownPoints.filter(poi => !poi.onlyLevel3);
             } else {
-                console.log("unsupported point of interest filtering mode:", mode);
+                if (mode !== "byProximity") {
+                    console.log("unsupported point of interest filtering mode:", mode);
+                }
             }
             return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
         },

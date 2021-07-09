@@ -7,6 +7,7 @@ import {
   Line,
   mod,
   Shape,
+  getEdgeLength,
 } from "./Types";
 
 /**
@@ -19,7 +20,7 @@ import {
  */
 export default class Island {
   private static idSource: number = 0;
-  private level: number;
+  level: number;
   private maps: Set<Map> = new Set();
 
   id: number;
@@ -64,7 +65,7 @@ export default class Island {
   // it is sad that this is essentially a duplicate of the getEdgeLength method in
   // MapCollage
   get edgeLength() {
-    return 128 * 2 ** this.level;
+    return getEdgeLength(this.level);
   }
 
   static globalMapIndex: Record<string, Island> = {};
@@ -117,7 +118,7 @@ export default class Island {
   addPOI(poi: PointOfInterest) {
     // to be extra safe, we could verify here that the point of interest actually
     // belongs on this island
-    poi.island = this.id;
+    poi.isPartOfIsland(this);
     this.pointsOfInterest.push(poi);
   }
 
