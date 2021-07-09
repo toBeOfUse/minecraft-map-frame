@@ -1,6 +1,4 @@
-// complex types
-import Island from "./Island";
-import MapCollage from "./MapCollage";
+import type Island from "./Island";
 
 // simple cartesian grid types
 interface CSSDimensions {
@@ -238,7 +236,6 @@ export {
   Map,
   Corner,
   CornerType,
-  Island,
   Coords,
   clamp,
   mod,
@@ -246,7 +243,6 @@ export {
   PointOfInterest,
   StoredPOI,
   POIType,
-  MapCollage,
   Line,
   Shape,
   ItemsInLevel,
