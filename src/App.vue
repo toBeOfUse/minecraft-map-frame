@@ -71,7 +71,7 @@
             <transition name="fade">
                 <img
                     v-if="currentlyCenteredMap && !outliningSubMaps && !isMidZoom"
-                    :src="subMapImages[currentlyCenteredMap.file]"
+                    :src="'/maps/' + currentlyCenteredMap.file"
                     :key="currentlyCenteredMap.file"
                     :style="{
                         width: edgeLength + 'px',
@@ -191,9 +191,7 @@ export default {
             village: "/emerald.png"
         },
         allowedPOITypes: Object.values(POIType),
-        poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
-        fullMapImage: "/maps/" + availableMaps.full_map,
-        subMapImages: {}
+        poiTypeFilter: "byProximity" // or "byIsland" or "allIslands"
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -246,13 +244,6 @@ export default {
             // islands
             this.currentIsland = this.collage.islands[3].items[0];
         }
-        const fullMap = new Image();
-        fullMap.src = this.fullMapImage;
-        fullMap.onload = () => {
-            for (const map of availableMaps.level3) {
-                this.getSubMapImage(map, fullMap);
-            }
-        };
     },
     mounted() {
         if (history.scrollRestoration) {
@@ -416,27 +407,6 @@ export default {
                 `x: ${map.x - 64} thru ${map.x - 64 + edge}\n` +
                 `z: ${map.y - 64} thru ${map.y - 64 + edge}`
             );
-        },
-        getSubMapImage(map, fullMapImage) {
-            const subMap = document.createElement("canvas");
-            subMap.width = 1024;
-            subMap.height = 1024;
-            subMap
-                .getContext("2d")
-                .drawImage(
-                    fullMapImage,
-                    map.x - this.collage.lowestMapCoords.x,
-                    map.y - this.collage.lowestMapCoords.y,
-                    1024,
-                    1024,
-                    0,
-                    0,
-                    1024,
-                    1024
-                );
-            subMap.toBlob(blob => {
-                this.subMapImages = { ...this.subMapImages, [map.file]: URL.createObjectURL(blob) };
-            });
         },
         currentlyVisibleMaps(level) {
             if (level == 0 && this.zoomLevel != 0) {
