@@ -9,8 +9,10 @@
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
+    "@types/flatbush": "^3.3.0",
     "core-js": "^3.6.5",
     "dexie": "^3.0.3",
+    "flatbush": "^3.3.0",
     "sass": "^1.32.12",
     "sass-loader": "10.1.1",
     "vue": "2.6.12",
