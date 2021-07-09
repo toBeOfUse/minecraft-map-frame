@@ -15,11 +15,7 @@
             @mouseup="panning = false"
             @touchend="panning = false"
             @touchcancel="panning = false"
-            @mouseenter="mouseOverMap = true"
-            @mouseleave="
-                mouseOverMap = false;
-                panning = false;
-            "
+            @mouseleave="panning = false"
             @transitionend="zoomTransitionEnd"
         >
             <img
@@ -173,8 +169,7 @@ export default {
     name: "App",
     components: { MapOutlines },
     data: () => ({
-        collage: null,
-        mouseOverMap: false,
+        collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",
         mouseX: 0,
         mouseY: 0,
