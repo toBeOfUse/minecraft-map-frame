@@ -23,7 +23,7 @@
             @transitionend="zoomTransitionEnd"
         >
             <img
-                v-for="map in collage.maps.level3"
+                v-for="map in collage.items.maps[3].items"
                 :key="map.file"
                 :src="`maps/${map.file}`"
                 class="subMap"
@@ -52,7 +52,7 @@
                     />
                     <template v-if="outliningSubMaps">
                         <polygon
-                            v-for="(island, i) in collage.islands.level0"
+                            v-for="(island, i) in collage.islands[0].items"
                             :key="i"
                             fill="black"
                             :points="island.corners.map((c) => c.x + ',' + c.y).join(' ')"
@@ -82,7 +82,7 @@
                 />
             </transition>
             <img
-                v-for="subMap in collage.maps.level0"
+                v-for="subMap in collage.items.maps[0].items"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
                 class="subMap"
@@ -150,8 +150,7 @@
             <span v-if="currentlyCenteredMap" style="white-space: pre">
                 Map ID: #{{ currentlyCenteredMap.id }}
                 <br />
-                {{ collage.getEdgeLength(zoomLevel) }} x
-                {{ collage.getEdgeLength(zoomLevel) }} blocks
+                {{ getEdgeLength(zoomLevel) }} x {{ getEdgeLength(zoomLevel) }} blocks
                 <br />
                 {{ getMinecraftCoordinates(currentlyCenteredMap) }}
             </span>
@@ -165,7 +164,9 @@ import { vueWindowSizeMixin } from "vue-window-size";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapOutlines from "./MapOutlines.vue";
-import { MapCollage, Position, Dimensions, Island, clamp } from "./Types.ts";
+import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
+import MapCollage from "./MapCollage";
+import Island from "./Island";
 import { POIType } from "./Types";
 
 export default {
@@ -209,12 +210,13 @@ export default {
             // origin lies at 0, 0)
             const x = parseFloat(preAreaMatch[2]) + 64;
             const y = parseFloat(preAreaMatch[3]) + 64;
-            const edge = this.collage.getEdgeLength(level);
+            const edge = getEdgeLength(level);
             const mapX = Math.floor(x / edge) * edge;
             const mapY = Math.floor(y / edge) * edge;
             let currentIsland;
             if (level == 3) {
-                currentIsland = this.collage.islands.level3[0];
+                // will have to be changed if we add support for multiple level3 islands
+                currentIsland = this.collage.islands[3].items[0];
             } else {
                 console.log("starting with map at level", level, "and coords", mapX, mapY);
                 currentIsland = Island.getIslandContainingMap(level, { x: mapX, y: mapY });
@@ -243,7 +245,7 @@ export default {
             );
             // this will have to be changed if we add support for multiple level 3
             // islands
-            this.currentIsland = this.collage.islands.level3[0];
+            this.currentIsland = this.collage.islands[3].items[0];
         }
         const fullMap = new Image();
         fullMap.src = this.fullMapImage;
@@ -257,7 +259,7 @@ export default {
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
         }
-        this.getCurrentPointsOfInterest();
+        this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
     },
     methods: {
         handleMouseMove(event) {
@@ -294,7 +296,7 @@ export default {
                 );
 
                 if (!this.outliningSubMaps) {
-                    this.getCurrentPointsOfInterest();
+                    this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
                 }
 
                 this.lastPanningX = newX;
@@ -337,18 +339,17 @@ export default {
                     console.log("map at this position was clicked", x, y);
                     this.isMidZoom = true;
                     this.currentIsland = Island.getIslandContainingMap(0, { x, y });
-                    this.getCurrentPointsOfInterest("byIsland").then(() => {
+                    this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byIsland");
+                    requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                this.zoomLevel = 0;
-                                // this.edgeLength updated when this.zoomLevel did
-                                this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                                this.fullMapPos = this.collage.getPosCenteredOnMap(
-                                    { x, y },
-                                    0,
-                                    new Dimensions(this.windowWidth, this.windowHeight)
-                                );
-                            });
+                            this.zoomLevel = 0;
+                            // this.edgeLength updated when this.zoomLevel did
+                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                            this.fullMapPos = this.collage.getPosCenteredOnMap(
+                                { x, y },
+                                0,
+                                new Dimensions(this.windowWidth, this.windowHeight)
+                            );
                         });
                     });
                 } else {
@@ -359,30 +360,29 @@ export default {
         magnifyingGlassClick() {
             if (this.zoomLevel !== 0) {
                 this.outliningSubMaps = !this.outliningSubMaps;
-                this.getCurrentPointsOfInterest("byProximity");
+                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byProximity");
             } else {
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
                 // islands
-                this.currentIsland = this.collage.islands.level3[0];
-                this.getCurrentPointsOfInterest("byProximity").then(() => {
+                this.currentIsland = this.collage.islands[3].items[0];
+                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byProximity");
+                requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            const currentLevel3Map = this.collage.getMapFromViewportPos(
-                                new Position(this.windowWidth / 2, this.windowHeight / 2),
-                                this.fullMapPos,
-                                3
-                            );
-                            this.zoomLevel = 3;
-                            this.outliningSubMaps = false;
-                            // this.edgeLength updated when this.zoomLevel did
-                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                            this.fullMapPos = this.collage.getPosCenteredOnMap(
-                                currentLevel3Map,
-                                3,
-                                new Dimensions(this.windowWidth, this.windowHeight)
-                            );
-                        });
+                        const currentLevel3Map = this.collage.getMapFromViewportPos(
+                            new Position(this.windowWidth / 2, this.windowHeight / 2),
+                            this.fullMapPos,
+                            3
+                        );
+                        this.zoomLevel = 3;
+                        this.outliningSubMaps = false;
+                        // this.edgeLength updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                        this.fullMapPos = this.collage.getPosCenteredOnMap(
+                            currentLevel3Map,
+                            3,
+                            new Dimensions(this.windowWidth, this.windowHeight)
+                        );
                     });
                 });
             }
@@ -413,95 +413,44 @@ export default {
             };
         },
         getMinecraftCoordinates(map) {
-            const edge = this.collage.getEdgeLength(this.zoomLevel);
+            const edge = getEdgeLength(this.zoomLevel);
             return (
                 `x: ${map.x - 64} thru ${map.x - 64 + edge}\n` +
                 `z: ${map.y - 64} thru ${map.y - 64 + edge}`
             );
         },
-        async getCurrentPointsOfInterest(mode = this.poiTypeFilter) {
+        getCurrentPointsOfInterest(mode = this.poiTypeFilter) {
             // this function is called by mounted(), when showVillages or showMisc
             // change, when poiTypeFilter changes, and while panning when zoomed out
             this.poiTypeFilter = mode;
-            const possibleTypes = Object.values(POIType);
+            let narrowedDownPoints;
             if (mode == "byIsland") {
-                // allowed [island+type] combinations: the current island id and all
-                // allowed types
-                const allowedKeys = this.allowedPOITypes.map(type => [this.currentIsland.id, type]);
-                console.log("searching for [island+type] keys:", allowedKeys);
-                if (allowedKeys.length == 0) {
-                    this.currentPointsOfInterest = [];
-                } else {
-                    let query = this.collage.pois.where("[island+type]");
-                    if (allowedKeys.length == 1) {
-                        query = query.equals(...allowedKeys);
-                    } else {
-                        query = query.anyOf(...allowedKeys);
-                    }
-                    this.currentPointsOfInterest = await query.toArray();
-                }
+                narrowedDownPoints = this.currentIsland.pointsOfInterest;
             } else if (mode == "allIslands") {
-                const islandKeys = await this.collage.pois.orderBy("island").uniqueKeys();
-                const notAllowedTypes = possibleTypes.filter(
-                    t => !this.allowedPOITypes.includes(t)
-                );
-                // not allowed values for [island+type]: -1 and anything; 1-6 and the
-                // not currently allowed types
-                const notAllowedKeys = Object.values(POIType).map(type => [-1, type]);
-                for (const ik of islandKeys) {
-                    for (const nat of notAllowedTypes) {
-                        notAllowedKeys.push([ik, nat]);
-                    }
-                }
-                console.log("excluding [island+type] keys:", notAllowedKeys);
-                this.currentPointsOfInterest = await this.collage.pois
-                    .where("[island+type]")
-                    .noneOf(...notAllowedKeys)
-                    .toArray();
+                narrowedDownPoints = this.collage.islands
+                    .map(g => g.items)
+                    .flat()
+                    .reduce((prev, current) => prev.concat(current.pointsOfInterest), []);
             } else if (mode == "byProximity") {
-                const viewportCenter = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(this.windowWidth / 2, this.windowHeight / 2),
+                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(0, 0),
                     this.fullMapPos
                 );
-                const halfAScreen = new Dimensions(
-                    // hack to make sure that we always consider the viewport to be
-                    // zoomed out for this method (because we always use byIsland
-                    // when zoomed in and so byProximity means we are either zoomed
-                    // out or about to zoom out)
-                    (this.screenSizeInBlockUnits.width / 2) * (this.zoomLevel == 0 ? 8 : 1),
-                    (this.screenSizeInBlockUnits.height / 2) * (this.zoomLevel == 0 ? 8 : 1)
+                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(this.windowWidth, this.windowHeight),
+                    this.fullMapPos
                 );
-                this.currentPointsOfInterest = (
-                    await this.collage.pois
-                        .where("[level+x+y]")
-                        .between(
-                            [
-                                3,
-                                viewportCenter.x - halfAScreen.width,
-                                viewportCenter.y - halfAScreen.height
-                            ],
-                            [
-                                3,
-                                viewportCenter.x + halfAScreen.width,
-                                viewportCenter.y + halfAScreen.height
-                            ]
-                        )
-                        .toArray()
-                ).filter(
-                    poi =>
-                        this.allowedPOITypes.includes(poi.type) &&
-                        // redo y-tests because the Dexie query is not cooperating
-                        poi.y > viewportCenter.y - halfAScreen.height &&
-                        poi.y < viewportCenter.y + halfAScreen.height
+                narrowedDownPoints = this.collage.items.searchPOIs(
+                    3,
+                    viewportMin.x,
+                    viewportMin.y,
+                    viewportMax.x,
+                    viewportMax.y
                 );
             } else {
                 console.log("unsupported point of interest filtering mode:", mode);
             }
-            console.log(
-                "retrieved current pois. there are",
-                this.currentPointsOfInterest.length,
-                "of them"
-            );
+            return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
         },
         getSubMapImage(map, fullMapImage) {
             const subMap = document.createElement("canvas");
@@ -523,7 +472,8 @@ export default {
             subMap.toBlob(blob => {
                 this.subMapImages = { ...this.subMapImages, [map.file]: URL.createObjectURL(blob) };
             });
-        }
+        },
+        getEdgeLength // adding this to the instance just to make it usable in the template
     },
     computed: {
         screenSizeInBlockUnits() {
@@ -585,11 +535,11 @@ export default {
             // retrieve the upper left corner of the map that is currently centered
             // at whatever zoom level we are at
             const mapX =
-                Math.floor(coordsWithinCollage.x / this.collage.getEdgeLength(this.zoomLevel)) *
-                this.collage.getEdgeLength(this.zoomLevel);
+                Math.floor(coordsWithinCollage.x / getEdgeLength(this.zoomLevel)) *
+                getEdgeLength(this.zoomLevel);
             const mapY =
-                Math.floor(coordsWithinCollage.y / this.collage.getEdgeLength(this.zoomLevel)) *
-                this.collage.getEdgeLength(this.zoomLevel);
+                Math.floor(coordsWithinCollage.y / getEdgeLength(this.zoomLevel)) *
+                getEdgeLength(this.zoomLevel);
             // use the islandShape object's properties to retrieve the lines that
             // bound the current island that are directly left and right and directly
             // below and above the current center-of-the-viewport point
@@ -651,11 +601,11 @@ export default {
     watch: {
         outliningSubMaps(newValue, oldValue) {
             if (oldValue === false && newValue === true) {
-                this.getCurrentPointsOfInterest("allIslands");
+                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("allIslands");
             }
         },
         allowedPOITypes() {
-            this.getCurrentPointsOfInterest();
+            this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
         }
     },
     mixins: [vueWindowSizeMixin]
