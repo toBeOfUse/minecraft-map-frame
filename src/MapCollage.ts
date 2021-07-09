@@ -5,40 +5,97 @@ import {
   Map,
   Island,
   Coords,
+  getEdgeLength,
+  ItemsInLevel,
 } from "./Types";
 
-import Dexie from "dexie";
+import Flatbush from "flatbush";
 
+/**
+ * This interface is only used for the result of importing processed_maps.json; the
+ * rest of the time we can use the more generic ItemsInLevel interface
+ */
 interface MapsByLevel {
   level0: Map[];
+  level1: Map[];
+  level2: Map[];
   level3: Map[];
+  level4: Map[];
 }
 
-interface IslandsByLevel {
-  level0: Island[];
-  level3: Island[];
+/**
+ * This class stores both Maps and PointsOfInterest in indexed and unindexed form.
+ * Each of the four instance variables are possibly-sparse arrays where the items
+ * corresponding to level 0 are stored at this.instanceVariable[0], and so on.
+ */
+class IndexedMapItems {
+  mapIndex: Flatbush[] = [];
+  POIIndex: Flatbush[] = [];
+  maps: ItemsInLevel<Map>[] = [];
+  pointsOfInterest: ItemsInLevel<PointOfInterest>[] = [];
+
+  constructor(itemGroups: ItemsInLevel<Map | PointOfInterest>[]) {
+    for (const itemGroup of itemGroups) {
+      const newIndex = new Flatbush(itemGroup.items.length);
+      if (itemGroup.items[0] instanceof Map) {
+        for (const item of itemGroup.items) {
+          const edgeLength = getEdgeLength(itemGroup.level);
+          newIndex.add(
+            item.x,
+            item.y,
+            item.x + edgeLength,
+            item.y + edgeLength
+          );
+        }
+        this.maps[itemGroup.level] = itemGroup as ItemsInLevel<Map>;
+        this.mapIndex[itemGroup.level] = newIndex;
+      } else {
+        for (const item of itemGroup.items) {
+          newIndex.add(item.x, item.y, item.x, item.y);
+        }
+        this.pointsOfInterest[itemGroup.level] = itemGroup as ItemsInLevel<
+          PointOfInterest
+        >;
+        this.POIIndex[itemGroup.level] = newIndex;
+      }
+      newIndex.finish();
+    }
+  }
+
+  searchMaps(
+    level: number,
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number
+  ): Map[] {
+    const locations = this.mapIndex[level].search(minX, minY, maxX, maxY);
+    return locations.map((l) => this.maps[level].items[l]);
+  }
+
+  searchPOIs(
+    level: number,
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number
+  ): PointOfInterest[] {
+    const locations = this.POIIndex[level].search(minX, minY, maxX, maxY);
+    return locations.map((l) => this.pointsOfInterest[level].items[l]);
+  }
+
+  get allMaps(): Map[] {
+    return this.maps.map((g) => g.items).flat();
+  }
+
+  get allPOIs(): PointOfInterest[] {
+    return this.pointsOfInterest.map((g) => g.items).flat();
+  }
 }
 
 interface ScaleInfo {
   mapLevel: number;
   edgeLengthPx: number;
-}
-
-class POIDB extends Dexie {
-  public POIs: Dexie.Table<PointOfInterest, number>;
-  constructor() {
-    super("POIDB");
-    this.version(4).stores({
-      POIs: "++id,[level+x+y],[island+type]",
-    });
-    this.POIs = this.table("POIs");
-    // clear out old pois from previous sessions
-    this.transaction("rw", this.POIs, () => {
-      this.POIs.toCollection().eachPrimaryKey((pk) => {
-        this.POIs.delete(pk);
-      });
-    });
-  }
 }
 
 /**
@@ -51,8 +108,7 @@ class POIDB extends Dexie {
  * for most practical purposes, this class should be used as a singleton.
  */
 export default class MapCollage {
-  maps: MapsByLevel;
-  pois: Dexie.Table<PointOfInterest, number>;
+  items: IndexedMapItems;
   pxPerBlock: number;
 
   originMap: Map | undefined;
@@ -61,7 +117,7 @@ export default class MapCollage {
 
   fullMapDimensions: Dimensions;
 
-  islands: IslandsByLevel;
+  islands: ItemsInLevel<Island>[] = [];
 
   // dx and dy for top, right, bottom, left
   public static readonly sides: [number, number][] = [
@@ -73,47 +129,66 @@ export default class MapCollage {
 
   constructor(
     maps: MapsByLevel,
-    pointsOfInterest: PointOfInterest[],
+    pointsOfInterest: ItemsInLevel<PointOfInterest>[],
     sizing: ScaleInfo
   ) {
     console.log("COLLAGE: creating map collage object");
-    this.maps = Object.freeze(maps);
     console.log(
       "COLLAGE: sizing information for converting blocks to pixels:",
       sizing
     );
-    this.pxPerBlock = sizing.edgeLengthPx / this.getEdgeLength(sizing.mapLevel);
+    this.pxPerBlock = sizing.edgeLengthPx / getEdgeLength(sizing.mapLevel);
+
+    const mapsAsItems: ItemsInLevel<Map>[] = [];
+    mapsAsItems[0] = { level: 0, items: maps.level0 };
+    mapsAsItems[3] = { level: 3, items: maps.level3 };
+
+    this.items = new IndexedMapItems(
+      (mapsAsItems as ItemsInLevel<any>[]).concat(
+        pointsOfInterest as ItemsInLevel<any>[]
+      )
+    );
+
     // TODO: figure out what to do in the hypothetical scenario where this map is not
     // present
-    this.originMap = this.maps.level3.find((m) => m.x === 0 && m.y === 0);
+    const originCenter = getEdgeLength(3) / 2;
+    this.originMap = this.items.searchMaps(
+      3,
+      originCenter,
+      originCenter,
+      originCenter,
+      originCenter
+    )[0];
 
     console.log("COLLAGE: found origin map:", this.originMap);
 
-    const exes = this.maps.level3.map((m) => m.x);
-    const whys = this.maps.level3.map((m) => m.y);
-    this.lowestMapCoords = { x: Math.min(...exes), y: Math.min(...whys) };
-    this.highestMapCoords = { x: Math.max(...exes), y: Math.max(...whys) };
+    const exes = this.items.maps[3].items.map((m) => m.x);
+    const whys = this.items.maps[3].items.map((m) => m.y);
+    this.lowestMapCoords = {
+      x: this.items.mapIndex[3].minX,
+      y: this.items.mapIndex[3].minY,
+    };
+    this.highestMapCoords = {
+      x: this.items.mapIndex[3].maxX,
+      y: this.items.mapIndex[3].maxY,
+    };
 
     this.fullMapDimensions = new Dimensions(
-      (this.highestMapCoords.x +
-        this.getEdgeLength(3) -
-        this.lowestMapCoords.x) *
+      (this.highestMapCoords.x + getEdgeLength(3) - this.lowestMapCoords.x) *
         this.pxPerBlock,
-      (this.highestMapCoords.y +
-        this.getEdgeLength(3) -
-        this.lowestMapCoords.y) *
+      (this.highestMapCoords.y + getEdgeLength(3) - this.lowestMapCoords.y) *
         this.pxPerBlock
     );
 
-    this.islands = { level3: [], level0: [] };
-
-    const checkedMaps = { level0: new Set(), level3: new Set() };
-    let level: keyof MapsByLevel;
+    const checkedMaps = { "0": new Set(), "3": new Set() };
+    let level: keyof typeof checkedMaps;
     for (level in checkedMaps) {
-      const levelInt = parseInt(level.slice(-1));
-      while (checkedMaps[level].size < this.maps[level].length) {
+      const levelInt = parseInt(level);
+      const mapsAtLevel = this.items.maps[levelInt].items;
+      this.islands[levelInt] = { level: levelInt, items: [] };
+      while (checkedMaps[level].size < mapsAtLevel.length) {
         const isl = new Island(levelInt);
-        const uncheckedMap = this.maps[level].find(
+        const uncheckedMap = mapsAtLevel.find(
           (m) => !checkedMaps[level].has(m)
         );
         if (uncheckedMap) {
@@ -124,7 +199,7 @@ export default class MapCollage {
           isl.addMaps(islandMaps);
         }
         isl.findEdges();
-        this.islands[level].push(isl);
+        this.islands[levelInt].items.push(isl);
       }
     }
 
@@ -133,21 +208,13 @@ export default class MapCollage {
     // would occupy, check if the map exists, and look up the island containing it
     // and add the point to it.
 
-    for (const poi of pointsOfInterest) {
-      const mapX =
-        Math.floor(poi.x / this.getEdgeLength(0)) * this.getEdgeLength(0);
-      const mapY =
-        Math.floor(poi.y / this.getEdgeLength(0)) * this.getEdgeLength(0);
+    for (const poi of this.items.allPOIs) {
+      const mapX = Math.floor(poi.x / getEdgeLength(0)) * getEdgeLength(0);
+      const mapY = Math.floor(poi.y / getEdgeLength(0)) * getEdgeLength(0);
       if (this.mapExistsAt({ x: mapX, y: mapY }, 0)) {
         Island.getIslandContainingMap(0, { x: mapX, y: mapY }).addPOI(poi);
       }
     }
-
-    const db = new POIDB();
-    db.transaction("rw", db.POIs, () => {
-      db.POIs.bulkAdd(pointsOfInterest);
-    });
-    this.pois = db.POIs;
 
     Object.freeze(this.islands);
 
@@ -156,7 +223,7 @@ export default class MapCollage {
 
   buildIsland(map: Map, level: number): Set<Map> {
     const result = new Set<Map>();
-    const edgeLength = this.getEdgeLength(level);
+    const edgeLength = getEdgeLength(level);
     const search = (map: Map | undefined) => {
       if (!map) return; // should not happen
       if (!result.has(map)) {
@@ -179,24 +246,13 @@ export default class MapCollage {
   }
 
   resize(sizing: ScaleInfo) {
-    this.pxPerBlock = sizing.edgeLengthPx / this.getEdgeLength(sizing.mapLevel);
+    this.pxPerBlock = sizing.edgeLengthPx / getEdgeLength(sizing.mapLevel);
     this.fullMapDimensions = new Dimensions(
-      (this.highestMapCoords.x +
-        this.getEdgeLength(3) -
-        this.lowestMapCoords.x) *
+      (this.highestMapCoords.x + getEdgeLength(3) - this.lowestMapCoords.x) *
         this.pxPerBlock,
-      (this.highestMapCoords.y +
-        this.getEdgeLength(3) -
-        this.lowestMapCoords.y) *
+      (this.highestMapCoords.y + getEdgeLength(3) - this.lowestMapCoords.y) *
         this.pxPerBlock
     );
-  }
-
-  getEdgeLength(level: number): number {
-    // this class uses units where 128 units is equal to the length of each edge
-    // of a level 0 map (just like in minecraft). this function returns the
-    // length each edge of any map of any level in those units
-    return 128 * 2 ** level;
   }
 
   getCoordsRelativeToCollage(mapCoords: Coords): Coords {
@@ -235,16 +291,32 @@ export default class MapCollage {
     // returns the pixel values for the left and top css properties that, when given
     // to the collage container, will center the specified map.
     const { x, y } = this.getCoordsRelativeToCollage(mapCoords);
-    const mapEdgeLength = this.getEdgeLength(mapLevel) * this.pxPerBlock;
+    const mapEdgeLength = getEdgeLength(mapLevel) * this.pxPerBlock;
     return new Position(
       -x * this.pxPerBlock + (viewport.width - mapEdgeLength) / 2,
       -y * this.pxPerBlock + (viewport.height - mapEdgeLength) / 2
     );
   }
 
+  /**
+   * @param x X coordinate corresponding to the top left corner of a map
+   * @param y Y Coordinate corresponding to the top left corner of a map
+   * @param level Zoom level that we are looking for this map at
+   * @returns A Map if it exists at this x, y, and zoom level; else undefined
+   */
+  getMapFromCoords(x: number, y: number, level: number): Map | undefined {
+    const halfEdge = getEdgeLength(level) / 2;
+    return this.items.searchMaps(
+      level,
+      x,
+      y + halfEdge,
+      x + halfEdge,
+      y + halfEdge
+    )[0];
+  }
+
   mapExistsAt(mapCoords: Coords, mapLevel: number): boolean {
-    const level = mapLevel == 0 ? this.maps.level0 : this.maps.level3;
-    return level.some((m: Map) => m.x === mapCoords.x && m.y === mapCoords.y);
+    return !!this.getMapFromCoords(mapCoords.x, mapCoords.y, mapLevel);
   }
 
   mapExistsAtRelativeTo(
@@ -266,8 +338,8 @@ export default class MapCollage {
     return this.mapExistsAtRelativeTo(
       { x: map.x, y: map.y },
       {
-        x: dx * this.getEdgeLength(level),
-        y: dy * this.getEdgeLength(level),
+        x: dx * getEdgeLength(level),
+        y: dy * getEdgeLength(level),
       },
       level
     );
@@ -285,14 +357,6 @@ export default class MapCollage {
     return { x: x + this.lowestMapCoords.x, y: y + this.lowestMapCoords.y };
   }
 
-  getMapFromCoords(x: number, y: number, level: number) {
-    // TODO: to scale better, this method should be replaced with a version that queries
-    // a sorted index of maps, or possibly queries an object with keys that
-    // incorporate the information from this method's parameters
-    const maps = level == 0 ? this.maps.level0 : this.maps.level3;
-    return maps.find((m) => m.x == x && m.y == y);
-  }
-
   getMapFromViewportPos(
     viewportPos: Position,
     collagePos: Position,
@@ -305,18 +369,12 @@ export default class MapCollage {
       viewportPos,
       collagePos
     );
-    const level = mapLevel == 0 ? this.maps.level0 : this.maps.level3;
-    const relevantEdgeLength = this.getEdgeLength(mapLevel);
-    const flooredCoords = {
-      x:
-        Math.floor(coordsWithinCollage.x / relevantEdgeLength) *
-        relevantEdgeLength,
-      y:
-        Math.floor(coordsWithinCollage.y / relevantEdgeLength) *
-        relevantEdgeLength,
-    };
-    return level?.find(
-      (m: Map) => m.x === flooredCoords.x && m.y === flooredCoords.y
+    this.items.searchMaps(
+      mapLevel,
+      coordsWithinCollage.x,
+      coordsWithinCollage.y,
+      coordsWithinCollage.x,
+      coordsWithinCollage.y
     );
   }
 }

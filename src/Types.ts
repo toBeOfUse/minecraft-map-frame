@@ -221,6 +221,15 @@ function mod(n: number, m: number) {
   return ((n % m) + m) % m;
 }
 
+/**
+ * our internal representation uses units where 128 units is equal to the length
+ * of each edge of a level 0 map (just like in minecraft). this function returns
+ * the length each edge of any map of any level in those units
+ */
+function getEdgeLength(level: number): number {
+  return 128 * 2 ** level;
+}
+
 export {
   CSSDimensions,
   CSSPosition,
@@ -233,10 +242,12 @@ export {
   Coords,
   clamp,
   mod,
+  getEdgeLength,
   PointOfInterest,
   StoredPOI,
   POIType,
   MapCollage,
   Line,
   Shape,
+  ItemsInLevel,
 };
