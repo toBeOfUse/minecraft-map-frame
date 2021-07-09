@@ -10,7 +10,8 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { MapCollage, Dimensions, Map, Coords, Position, CornerType } from "./Types";
+import { Dimensions, Map, Coords, Position, CornerType, getEdgeLength } from "./Types";
+import MapCollage from "./MapCollage";
 const comp = Vue.extend({
     name: "MapOutlines",
     props: {
@@ -43,12 +44,11 @@ const comp = Vue.extend({
             this.collage.fullMapDimensions.width + this.borderWidth * 2,
             this.collage.fullMapDimensions.height + this.borderWidth * 2
         );
-        this.subMapEdgeLength =
-            this.collage.getEdgeLength(this.zoomLevel) * this.collage.pxPerBlock;
+        this.subMapEdgeLength = getEdgeLength(this.zoomLevel) * this.collage.pxPerBlock;
         // save/index the results of calling getPosWithinCollage with all the
         // available corners; then use that data during getSubMapBorders. this is in
         // accordance with the above
-        for (const island of this.collage.islands.level0) {
+        for (const island of this.collage.islands[0].items) {
             for (const corner of island.corners) {
                 const cornerCoords = this.collage.getPosWithinCollage(corner).asCoords();
                 // adjust for the fact that the outline overlay svg extends
@@ -71,7 +71,7 @@ const comp = Vue.extend({
         getSubMapBorders() {
             let cornerCount = 0;
             const lines = [];
-            for (const island of this.collage.islands.level0) {
+            for (const island of this.collage.islands[0].items) {
                 for (let i = 0; i < island.corners.length; i++) {
                     const cornerFrom = island.corners[i];
                     const cornerTo = island.corners[(i + 1) % island.corners.length];
@@ -154,11 +154,7 @@ const comp = Vue.extend({
     },
     computed: {
         subMaps(): Map[] {
-            if (this.zoomLevel == 0) {
-                return this.collage.maps.level0;
-            } else {
-                return this.collage.maps.level3;
-            }
+            return this.collage.items.maps[this.zoomLevel].items;
         },
     },
 });
