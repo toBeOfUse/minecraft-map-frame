@@ -23,7 +23,7 @@
             @transitionend="zoomTransitionEnd"
         >
             <img
-                v-for="map in collage.items.maps[3].items"
+                v-for="map in currentlyVisibleMaps(3)"
                 :key="map.file"
                 :src="`maps/${map.file}`"
                 class="subMap"
@@ -82,7 +82,7 @@
                 />
             </transition>
             <img
-                v-for="subMap in collage.items.maps[0].items"
+                v-for="subMap in currentlyVisibleMaps(0)"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
                 class="subMap"
@@ -437,6 +437,27 @@ export default {
             subMap.toBlob(blob => {
                 this.subMapImages = { ...this.subMapImages, [map.file]: URL.createObjectURL(blob) };
             });
+        },
+        currentlyVisibleMaps(level) {
+            if (level == 0 && this.zoomLevel != 0) {
+                return [];
+            } else {
+                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(0, 0),
+                    this.fullMapPos
+                );
+                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(this.windowWidth, this.windowHeight),
+                    this.fullMapPos
+                );
+                return this.collage.items.searchMaps(
+                    level,
+                    viewportMin.x,
+                    viewportMin.y,
+                    viewportMax.x,
+                    viewportMax.y
+                );
+            }
         },
         getEdgeLength // adding this to the instance just to make it usable in the template
     },
