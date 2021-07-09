@@ -186,7 +186,6 @@ export default {
         lastPanningX: -1,
         lastPanningY: -1,
         currentIsland: null,
-        currentPointsOfInterest: [],
         markerIcons: {
             normal: "/marker.png",
             village: "/emerald.png"
@@ -259,7 +258,6 @@ export default {
         if (history.scrollRestoration) {
             history.scrollRestoration = "manual";
         }
-        this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
     },
     methods: {
         handleMouseMove(event) {
@@ -294,10 +292,6 @@ export default {
                         bounds.upperYBound
                     )
                 );
-
-                if (!this.outliningSubMaps) {
-                    this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
-                }
 
                 this.lastPanningX = newX;
                 this.lastPanningY = newY;
@@ -339,7 +333,7 @@ export default {
                     console.log("map at this position was clicked", x, y);
                     this.isMidZoom = true;
                     this.currentIsland = Island.getIslandContainingMap(0, { x, y });
-                    this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byIsland");
+                    this.poiTypeFilter = "byIsland";
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             this.zoomLevel = 0;
@@ -360,13 +354,17 @@ export default {
         magnifyingGlassClick() {
             if (this.zoomLevel !== 0) {
                 this.outliningSubMaps = !this.outliningSubMaps;
-                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byProximity");
+                if (this.outliningSubMaps) {
+                    this.poiTypeFilter = "allIslands";
+                } else {
+                    this.poiTypeFilter = "byProximity";
+                }
             } else {
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
                 // islands
                 this.currentIsland = this.collage.islands[3].items[0];
-                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("byProximity");
+                this.poiTypeFilter = "byProximity";
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         const currentLevel3Map = this.collage.getMapFromViewportPos(
@@ -418,39 +416,6 @@ export default {
                 `x: ${map.x - 64} thru ${map.x - 64 + edge}\n` +
                 `z: ${map.y - 64} thru ${map.y - 64 + edge}`
             );
-        },
-        getCurrentPointsOfInterest(mode = this.poiTypeFilter) {
-            // this function is called by mounted(), when showVillages or showMisc
-            // change, when poiTypeFilter changes, and while panning when zoomed out
-            this.poiTypeFilter = mode;
-            let narrowedDownPoints;
-            if (mode == "byIsland") {
-                narrowedDownPoints = this.currentIsland.pointsOfInterest;
-            } else if (mode == "allIslands") {
-                narrowedDownPoints = this.collage.islands
-                    .map(g => g.items)
-                    .flat()
-                    .reduce((prev, current) => prev.concat(current.pointsOfInterest), []);
-            } else if (mode == "byProximity") {
-                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(0, 0),
-                    this.fullMapPos
-                );
-                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(this.windowWidth, this.windowHeight),
-                    this.fullMapPos
-                );
-                narrowedDownPoints = this.collage.items.searchPOIs(
-                    3,
-                    viewportMin.x,
-                    viewportMin.y,
-                    viewportMax.x,
-                    viewportMax.y
-                );
-            } else {
-                console.log("unsupported point of interest filtering mode:", mode);
-            }
-            return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
         },
         getSubMapImage(map, fullMapImage) {
             const subMap = document.createElement("canvas");
@@ -586,6 +551,37 @@ export default {
             //     upperYBound: Infinity
             // };
         },
+        currentPointsOfInterest() {
+            const mode = this.poiTypeFilter;
+            let narrowedDownPoints;
+            if (mode == "byIsland") {
+                narrowedDownPoints = this.currentIsland.pointsOfInterest;
+            } else if (mode == "allIslands") {
+                narrowedDownPoints = this.collage.islands
+                    .map(g => g.items)
+                    .flat()
+                    .reduce((prev, current) => prev.concat(current.pointsOfInterest), []);
+            } else if (mode == "byProximity") {
+                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(0, 0),
+                    this.fullMapPos
+                );
+                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(this.windowWidth, this.windowHeight),
+                    this.fullMapPos
+                );
+                narrowedDownPoints = this.collage.items.searchPOIs(
+                    3,
+                    viewportMin.x,
+                    viewportMin.y,
+                    viewportMax.x,
+                    viewportMax.y
+                );
+            } else {
+                console.log("unsupported point of interest filtering mode:", mode);
+            }
+            return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
+        },
         zoomButtonText() {
             if (this.zoomLevel == 3) {
                 if (this.outliningSubMaps) {
@@ -596,16 +592,6 @@ export default {
             } else {
                 return "Zoom Out";
             }
-        }
-    },
-    watch: {
-        outliningSubMaps(newValue, oldValue) {
-            if (oldValue === false && newValue === true) {
-                this.currentPointsOfInterest = this.getCurrentPointsOfInterest("allIslands");
-            }
-        },
-        allowedPOITypes() {
-            this.currentPointsOfInterest = this.getCurrentPointsOfInterest();
         }
     },
     mixins: [vueWindowSizeMixin]
