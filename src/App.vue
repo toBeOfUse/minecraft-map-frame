@@ -19,7 +19,7 @@
             @transitionend="zoomTransitionEnd"
         >
             <img
-                v-for="map in currentlyVisibleMaps(3)"
+                v-for="map in getCurrentlyVisibleMaps(3)"
                 :key="map.file"
                 :src="`maps/${map.file}`"
                 class="subMap"
@@ -78,7 +78,7 @@
                 />
             </transition>
             <img
-                v-for="subMap in currentlyVisibleMaps(0)"
+                v-for="subMap in getCurrentlyVisibleMaps(0)"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
                 class="subMap"
@@ -177,6 +177,7 @@ export default {
         isMidZoom: false,
         fullMapPos: new Position(NaN, NaN), // properly set in "created" hook
         outliningSubMaps: false,
+        renderingSubMaps: false,
         panning: false,
         lastPanningX: -1,
         lastPanningY: -1,
@@ -186,7 +187,17 @@ export default {
             village: "/emerald.png"
         },
         allowedPOITypes: Object.values(POIType),
-        poiTypeFilter: "byProximity" // or "byIsland" or "allIslands"
+        poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
+        // whilst zooming in or out, it is necessary to have loaded into the DOM the
+        // maps and POIs that are visible both before and after the change in zoom
+        // level occurs, to ensure a smooth transition. these next two state
+        // components record the rectangles in [minX, minY, maxX, maxY] format in
+        // MapCollage units that contain the maps that are visible during each of
+        // those states. these two components are only used when isMidZoom is true;
+        // the rest of the time the current "window" containing the maps and POIs
+        // that are to be shown is calculated with MapCollage.getWindowFromViewport.
+        zoomedOutWindow: [NaN, NaN, NaN, NaN],
+        zoomedInWindow: [NaN, NaN, NaN, NaN]
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -235,10 +246,14 @@ export default {
                 3,
                 new Dimensions(this.windowWidth, this.windowHeight)
             );
+
             // this will have to be changed if we add support for multiple level 3
             // islands
             this.currentIsland = this.collage.islands[3].items[0];
         }
+        // the actual next values are not known unless isMidZoom
+        this.nextFullMapPos = this.fullMapPos;
+        this.nextZoomLevel = this.zoomLevel;
     },
     mounted() {
         if (history.scrollRestoration) {
@@ -287,6 +302,9 @@ export default {
             if (event.touches && event.touches.length > 1) {
                 return;
             }
+            if (this.isMidZoom) {
+                return;
+            }
             this.panning = true;
             this.lastPanningX = event.type.startsWith("mouse")
                 ? event.pageX
@@ -315,11 +333,24 @@ export default {
                     0
                 );
                 if (clickedMap) {
+                    // code that handles zooming in
+                    // TODO: move code for zooming in and out into its own method
                     const { x, y } = clickedMap;
                     console.log("map at this position was clicked", x, y);
                     this.isMidZoom = true;
                     this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                     this.poiTypeFilter = "byIsland";
+                    this.renderingSubMaps = true;
+                    this.zoomedInWindow = this.collage.getWindowCenteredOnMap(
+                        { x, y },
+                        3,
+                        0,
+                        new Dimensions(this.windowWidth, this.windowHeight)
+                    );
+                    this.zoomedOutWindow = this.collage.getWindowFromViewport(
+                        this.fullMapPos,
+                        new Dimensions(this.windowWidth, this.windowHeight)
+                    );
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             this.zoomLevel = 0;
@@ -346,18 +377,30 @@ export default {
                     this.poiTypeFilter = "byProximity";
                 }
             } else {
+                // code that handles zooming out
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
                 // islands
                 this.currentIsland = this.collage.islands[3].items[0];
                 this.poiTypeFilter = "byProximity";
+                this.renderingSubMaps = false;
+                const currentLevel3Map = this.collage.getMapFromViewportPos(
+                    new Position(this.windowWidth / 2, this.windowHeight / 2),
+                    this.fullMapPos,
+                    3
+                );
+                this.zoomedOutWindow = this.collage.getWindowCenteredOnMap(
+                    currentLevel3Map,
+                    0,
+                    3,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
+                this.zoomedInWindow = this.collage.getWindowFromViewport(
+                    this.fullMapPos,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        const currentLevel3Map = this.collage.getMapFromViewportPos(
-                            new Position(this.windowWidth / 2, this.windowHeight / 2),
-                            this.fullMapPos,
-                            3
-                        );
                         this.zoomLevel = 3;
                         this.outliningSubMaps = false;
                         // this.edgeLength updated when this.zoomLevel did
@@ -403,25 +446,37 @@ export default {
                 `z: ${map.y - 64} thru ${map.y - 64 + edge}`
             );
         },
-        currentlyVisibleMaps(level) {
-            if (level == 0 && this.zoomLevel != 0) {
+        getCurrentlyVisibleMaps(level) {
+            if (level == 0 && !this.renderingSubMaps) {
                 return [];
             } else {
-                const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(0, 0),
-                    this.fullMapPos
-                );
-                const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(this.windowWidth, this.windowHeight),
-                    this.fullMapPos
-                );
-                return this.collage.items.searchMaps(
-                    level,
-                    viewportMin.x,
-                    viewportMin.y,
-                    viewportMax.x,
-                    viewportMax.y
-                );
+                if (this.isMidZoom) {
+                    const zoomedOutMaps = this.collage.items.searchMaps(
+                        level,
+                        ...this.zoomedOutWindow
+                    );
+                    const zoomedInMaps = this.collage.items.searchMaps(
+                        level,
+                        ...this.zoomedInWindow
+                    );
+                    // remove duplicates
+                    const files = new Set();
+                    const allMaps = [];
+                    for (const map of zoomedOutMaps.concat(zoomedInMaps)) {
+                        if (!files.has(map.file)) {
+                            files.add(map.file);
+                            allMaps.push(map);
+                        }
+                    }
+                    return allMaps;
+                } else {
+                    const openWindow = this.collage.getWindowFromViewport(
+                        this.fullMapPos,
+                        new Dimensions(this.windowWidth, this.windowHeight)
+                    );
+
+                    return this.collage.items.searchMaps(level, ...openWindow);
+                }
             }
         },
         getEdgeLength // adding this to the instance just to make it usable in the template
@@ -538,32 +593,33 @@ export default {
             // };
         },
         currentPointsOfInterest() {
-            const viewportMin = this.collage.getCoordsWithinCollageFromViewportPos(
-                new Position(0, 0),
-                this.fullMapPos
-            );
-            const viewportMax = this.collage.getCoordsWithinCollageFromViewportPos(
-                new Position(this.windowWidth, this.windowHeight),
-                this.fullMapPos
-            );
-            let narrowedDownPoints = this.collage.items.searchPOIs(
-                3,
-                viewportMin.x,
-                viewportMin.y,
-                viewportMax.x,
-                viewportMax.y
-            );
-            if (this.outliningSubMaps) {
-                narrowedDownPoints = narrowedDownPoints.concat(
-                    this.collage.items.searchPOIs(
-                        0,
-                        viewportMin.x,
-                        viewportMin.y,
-                        viewportMax.x,
-                        viewportMax.y
-                    )
+            let narrowedDownPoints = [];
+            if (this.isMidZoom) {
+                let points;
+                points = this.collage.items.searchPOIs(3, ...this.zoomedOutWindow);
+                points = points.concat(this.collage.items.searchPOIs(0, ...this.zoomedOutWindow));
+                points = points.concat(this.collage.items.searchPOIs(3, ...this.zoomedInWindow));
+                points = points.concat(this.collage.items.searchPOIs(0, ...this.zoomedInWindow));
+                const IDs = new Set();
+                for (const point of points) {
+                    if (!IDs.has(point.id)) {
+                        IDs.add(point.id);
+                        narrowedDownPoints.push(point);
+                    }
+                }
+            } else {
+                const currentWindow = this.collage.getWindowFromViewport(
+                    this.fullMapPos,
+                    new Dimensions(this.windowWidth, this.windowHeight)
                 );
+                narrowedDownPoints = this.collage.items.searchPOIs(3, ...currentWindow);
+                if (this.outliningSubMaps) {
+                    narrowedDownPoints = narrowedDownPoints.concat(
+                        this.collage.items.searchPOIs(0, ...currentWindow)
+                    );
+                }
             }
+
             const mode = this.poiTypeFilter;
             if (mode == "byIsland") {
                 narrowedDownPoints = narrowedDownPoints.filter(poi =>

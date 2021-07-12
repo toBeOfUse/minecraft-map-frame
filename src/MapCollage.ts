@@ -6,6 +6,7 @@ import {
   Coords,
   getEdgeLength,
   ItemsInLevel,
+  Window,
 } from "./Types";
 import Island from "./Island";
 
@@ -299,6 +300,39 @@ export default class MapCollage {
       -x * this.pxPerBlock + (viewport.width - mapEdgeLength) / 2,
       -y * this.pxPerBlock + (viewport.height - mapEdgeLength) / 2
     );
+  }
+
+  // TODO: create "window" type to standardize these methods?
+
+  getWindowCenteredOnMap(
+    mapCoords: Coords,
+    currentLevel: number,
+    mapLevel: number,
+    viewport: Dimensions
+  ): Window {
+    const scaleFactor = getEdgeLength(mapLevel) / getEdgeLength(currentLevel);
+    const windowWidth = (viewport.width / this.pxPerBlock) * scaleFactor;
+    const windowHeight = (viewport.height / this.pxPerBlock) * scaleFactor;
+    const mapCenterX = mapCoords.x + getEdgeLength(mapLevel) / 2;
+    const mapCenterY = mapCoords.y + getEdgeLength(mapLevel) / 2;
+    return [
+      mapCenterX - windowWidth / 2,
+      mapCenterY - windowHeight / 2,
+      mapCenterX + windowWidth / 2,
+      mapCenterY + windowHeight / 2,
+    ];
+  }
+
+  getWindowFromViewport(fullMapPos: Position, viewport: Dimensions): Window {
+    const viewportMin = this.getCoordsWithinCollageFromViewportPos(
+      new Position(0, 0),
+      fullMapPos
+    );
+    const viewportMax = this.getCoordsWithinCollageFromViewportPos(
+      new Position(viewport.width, viewport.height),
+      fullMapPos
+    );
+    return [viewportMin.x, viewportMin.y, viewportMax.x, viewportMax.y];
   }
 
   /**

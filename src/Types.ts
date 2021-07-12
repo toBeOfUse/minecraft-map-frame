@@ -192,6 +192,9 @@ class PointOfInterest {
   islandIDs: number[] = [];
   onlyLevel3: boolean = true;
   level: 0 | 3;
+  id: number;
+
+  private static idSource = 0;
 
   constructor(record: StoredPOI, level: 0 | 3) {
     this.x = record.x;
@@ -199,6 +202,8 @@ class PointOfInterest {
     this.text = record.text;
     this.type = record.type;
     this.level = level;
+    this.id = PointOfInterest.idSource;
+    PointOfInterest.idSource += 1;
   }
 
   isPartOfIsland(island: Island){
@@ -213,6 +218,11 @@ interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
   level: number;
   items: Type[];
 }
+
+/**
+ * Always minX, minY, maxX, maxY in MapCollage units.
+ */
+type Window = [number, number, number, number];
 
 // sigh
 function clamp(input: number, min: number, max: number) {
@@ -235,6 +245,12 @@ function getEdgeLength(level: number): number {
   return 128 * 2 ** level;
 }
 
+// function removeOverlap(rect1: Window, rect2: Window): Window[] {
+//   const exes = [rect1[0], rect1[2], rect2[0], rect2[2]];
+//   const whys = [rect1[1], rect1[3], rect2[1], rect2[3]];
+
+// }
+
 export {
   CSSDimensions,
   CSSPosition,
@@ -253,4 +269,5 @@ export {
   Line,
   Shape,
   ItemsInLevel,
+  Window
 };
