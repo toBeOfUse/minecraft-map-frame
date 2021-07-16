@@ -386,15 +386,12 @@ export default {
         },
         handleMapClick(event) {
             if (!this.deployed && navigator.clipboard) {
-                const coords = JSON.stringify(
-                    {
-                        x: Number(this.mouseX.toFixed(2)),
-                        y: Number(this.mouseY.toFixed(2)),
-                        text: ""
-                    },
-                    null,
-                    4
-                );
+                const coords = `{
+                    x: ${this.mouseX.toFixed(2)},
+                    y: ${this.mouseY.toFixed(2)},
+                    text: "",
+                    type: Normal,
+                },`;
                 navigator.clipboard.writeText(coords);
             }
             if (this.outliningSubMaps && this.zoomLevel !== 0) {
