@@ -302,8 +302,6 @@ export default class MapCollage {
     );
   }
 
-  // TODO: create "window" type to standardize these methods?
-
   getWindowCenteredOnMap(
     mapCoords: Coords,
     currentLevel: number,
@@ -323,7 +321,11 @@ export default class MapCollage {
     ];
   }
 
-  getWindowFromViewport(fullMapPos: Position, viewport: Dimensions): Window {
+  getWindowFromViewport(
+    fullMapPos: Position,
+    viewport: Dimensions,
+    margin: number = 256
+  ): Window {
     const viewportMin = this.getCoordsWithinCollageFromViewportPos(
       new Position(0, 0),
       fullMapPos
@@ -332,7 +334,12 @@ export default class MapCollage {
       new Position(viewport.width, viewport.height),
       fullMapPos
     );
-    return [viewportMin.x, viewportMin.y, viewportMax.x, viewportMax.y];
+    return [
+      viewportMin.x - margin,
+      viewportMin.y - margin,
+      viewportMax.x + margin,
+      viewportMax.y + margin,
+    ];
   }
 
   /**
