@@ -40,7 +40,8 @@ export default {
         markerIcons: {
             normal: "/marker.png",
             village: "/emerald.png",
-            mining: "/pickaxe.png"
+            mining: "/pickaxe.png",
+            monsters: "/sword.png"
         },
         handleNonMarkerClick: null,
         captionPosClass: "topCaption",

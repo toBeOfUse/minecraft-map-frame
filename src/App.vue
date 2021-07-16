@@ -142,19 +142,51 @@
                     id="zoomButton"
                 />{{ zoomButtonText }}</span
             >
-            <div class="rowMobile">
-                <label>
-                    <input type="checkbox" value="village" v-model="allowedPOITypes" />
-                    Villages
-                </label>
-                <label>
-                    <input type="checkbox" value="normal" v-model="allowedPOITypes" />
-                    Other fun stuff
-                </label>
+            <div class="poiCheckboxes">
+                <div class="poiCheckboxGroup">
+                    <span>
+                        <input
+                            id="village"
+                            type="checkbox"
+                            value="village"
+                            v-model="allowedPOITypes"
+                        />
+                        <label for="village"> Villages </label>
+                    </span>
+                    <span>
+                        <input
+                            id="mining"
+                            type="checkbox"
+                            value="mining"
+                            v-model="allowedPOITypes"
+                        />
+                        <label for="mining"> Mining spots </label>
+                    </span>
+                </div>
+                <div class="poiCheckboxGroup">
+                    <span>
+                        <input
+                            id="monsters"
+                            type="checkbox"
+                            value="monsters"
+                            v-model="allowedPOITypes"
+                        />
+                        <label for="monsters"> Monster hangouts </label>
+                    </span>
+                    <span>
+                        <input
+                            id="normal"
+                            type="checkbox"
+                            value="normal"
+                            v-model="allowedPOITypes"
+                        />
+                        <label for="normal"> Other fun stuff </label>
+                    </span>
+                </div>
             </div>
             <span v-if="currentlyCenteredMap" class="mapInfo">
                 Map ID: #{{ currentlyCenteredMap.id }}
-                <br />
+                {{ infoBoxDelimiter }}
                 {{ getEdgeLength(zoomLevel) }} x {{ getEdgeLength(zoomLevel) }} blocks
                 <br />
                 {{ getMinecraftCoordinates(currentlyCenteredMap) }}
@@ -454,7 +486,8 @@ export default {
         getMinecraftCoordinates(map) {
             const edge = getEdgeLength(this.zoomLevel);
             return (
-                `x: ${map.x - 64} thru ${map.x - 64 + edge}\n` +
+                `x: ${map.x - 64} thru ${map.x - 64 + edge}` +
+                this.infoBoxDelimiter +
                 `z: ${map.y - 64} thru ${map.y - 64 + edge}`
             );
         },
@@ -491,6 +524,16 @@ export default {
         getEdgeLength // adding this to the instance just to make it usable in the template
     },
     computed: {
+        verticalMode() {
+            return this.windowHeight > this.windowWidth;
+        },
+        infoBoxDelimiter() {
+            if (this.verticalMode) {
+                return " / ";
+            } else {
+                return "\n";
+            }
+        },
         screenSizeInBlockUnits() {
             return new Dimensions(
                 this.windowWidth / this.collage.pxPerBlock,
@@ -719,28 +762,44 @@ body {
     margin-right: 3px;
     margin-left: 3px;
 }
-.rowMobile {
+.poiCheckboxes {
     display: flex;
     flex-direction: column;
+    justify-content: space-evenly;
+    width: 100%;
+    > input {
+        display: inline;
+    }
+    > label {
+        display: inline;
+    }
     @media (max-aspect-ratio: 1/1) {
         flex-direction: row;
+        > label {
+            text-align: center;
+        }
         > label:not(:last-child) {
             margin-right: 5px;
         }
     }
 }
+.poiCheckboxGroup {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
 #cornerModal {
     position: fixed;
     right: 50px;
     top: 50px;
-    width: 150px;
+    width: 200px;
     @media (max-aspect-ratio: 1/1) {
         right: unset;
         top: unset;
+        width: 250px;
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%);
-        width: 60%;
         font-size: 80%;
         align-items: center;
     }
@@ -750,7 +809,7 @@ body {
     padding: 2.5px;
     display: flex;
     flex-direction: column;
-    z-index: 12;
+    z-index: 110;
     > * {
         margin-bottom: 5px;
     }

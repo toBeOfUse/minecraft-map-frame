@@ -2,6 +2,7 @@ import { PointOfInterest, POIType, ItemsInLevel } from "@/Types";
 const Village = POIType.Village;
 const Normal = POIType.Normal;
 const Mining = POIType.Mining;
+const Monsters = POIType.Monsters;
 
 const pois: ItemsInLevel<PointOfInterest>[] = [];
 
@@ -216,7 +217,7 @@ pois[0] = {
       x: 840.28,
       y: 408.45,
       text: "slime farm farm",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 2378.01,
@@ -384,7 +385,7 @@ pois[3] = {
       x: 73.12,
       y: -989.12,
       text: "spider spawner scave",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -430.96,
@@ -654,7 +655,7 @@ pois[3] = {
       x: 2642.69,
       y: -1940.11,
       text: "desert pyramid scheme",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 2829.81,
@@ -696,7 +697,7 @@ pois[3] = {
       x: -844.58,
       y: -161.01,
       text: "skeleton spawner (underground, in a cave)",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1991.41,
@@ -720,7 +721,7 @@ pois[3] = {
       x: 1204.63,
       y: -1956.71,
       text: "center for the drowned",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 475.78,
@@ -744,7 +745,7 @@ pois[3] = {
       x: 1441.54,
       y: -778.19,
       text: "million guardian ruins",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 1441.54,
@@ -798,7 +799,7 @@ pois[3] = {
       x: -1481.37,
       y: -328.51,
       text: "pillager tower (unpillaged)",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1463.27,
@@ -846,7 +847,7 @@ pois[3] = {
       x: -1716.6,
       y: 1849.16,
       text: "witch's hut (conquered)",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1360.95,
@@ -870,7 +871,7 @@ pois[3] = {
       x: 2147.07,
       y: -2945.21,
       text: "drowned village",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 2062.4,
@@ -948,7 +949,7 @@ pois[3] = {
       x: 1837.61,
       y: -2498.72,
       text: "drowned town",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 1278.73,
@@ -966,7 +967,7 @@ pois[3] = {
       x: 1106.29,
       y: -2994.48,
       text: "unsuccessful attempt desert pyramid",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: 1269.49,
@@ -978,13 +979,13 @@ pois[3] = {
       x: -1355.56,
       y: -1208.52,
       text: "pillager tower (as yet intact)",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1412.52,
       y: -1584.19,
       text: "i guess the spiders built these mineshafts?",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1133.85,
@@ -996,7 +997,7 @@ pois[3] = {
       x: -2042.23,
       y: -1964.48,
       text: "zombie spawner",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -1563.41,
@@ -1026,7 +1027,7 @@ pois[3] = {
       x: -454.88,
       y: -1996.81,
       text: "skeleton spawner",
-      type: Normal,
+      type: Monsters,
     },
     {
       x: -675.05,

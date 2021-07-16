@@ -176,6 +176,7 @@ enum POIType {
   Normal = "normal",
   Village = "village",
   Mining = "mining",
+  Monsters = "monsters"
 }
 
 interface StoredPOI {
