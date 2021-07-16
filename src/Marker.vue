@@ -201,6 +201,10 @@ export default {
     width: 25px;
     z-index: 8;
     @include standard-transitions;
+    @media (max-aspect-ratio: 1/1) {
+        height: 18px;
+        width: 18px;
+    }
 }
 .appZoomedIn .mapMarker {
     height: 40px;
