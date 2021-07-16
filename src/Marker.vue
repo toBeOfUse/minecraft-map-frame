@@ -1,7 +1,7 @@
 <template>
     <div
         class="mapMarker"
-        :class="displayingCaption ? 'displayingCaption' : ''"
+        :class="[displayingCaption ? 'displayingCaption' : '', clicked ? 'stayingOn' : '']"
         :style="position.toCSS()"
         @mouseover="hovered = true"
         @mouseout="
@@ -23,7 +23,7 @@
             }
         "
     >
-        <img :src="markerIcons[POI.type]" class="markerImage" />
+        <img :src="markerIcons[POI.type]" class="markerImage" ref="image" />
         <span class="caption" :class="captionPosClass" ref="caption">
             {{ POI.text }}
         </span>
@@ -79,14 +79,6 @@ export default {
         this.lastMouseDownFullMapPos = this.fullMapPos;
     },
     methods: {
-        offsetBBox(bbox, shiftX, shiftY) {
-            return {
-                minX: bbox.minX + shiftX,
-                minY: bbox.minY + shiftY,
-                maxX: bbox.maxX + shiftX,
-                maxY: bbox.maxY + shiftY
-            };
-        },
         reset() {
             this.captionPosClass = "topCaption";
         }
@@ -111,11 +103,18 @@ export default {
             if (newValue && !oldValue) {
                 this.fading = false;
                 const captionRect = this.$refs.caption.getBoundingClientRect();
+                const imageRect = this.$refs.image.getBoundingClientRect();
                 let captionBBox = {
                     minX: captionRect.left - this.fullMapPos.left,
                     minY: captionRect.top - this.fullMapPos.top,
                     maxX: captionRect.right - this.fullMapPos.left,
                     maxY: captionRect.bottom - this.fullMapPos.top
+                };
+                const imageBBox = {
+                    minX: imageRect.left - this.fullMapPos.left,
+                    minY: imageRect.top - this.fullMapPos.top,
+                    maxX: imageRect.right - this.fullMapPos.left,
+                    maxY: imageRect.bottom - this.fullMapPos.top
                 };
                 let captionPosClass = this.captionPosClass;
                 if (captionPosClass == "topCaption") {
@@ -123,19 +122,32 @@ export default {
                     // fading out and we should just leave it for visual continuity
                     if (this.coverageIndex.collides(captionBBox)) {
                         captionPosClass = "rightCaption";
-                        let shiftX = captionRect.width / 2;
-                        let shiftY = captionRect.height / 2;
-                        captionBBox = this.offsetBBox(captionBBox, shiftX, shiftY);
+                        captionBBox = {
+                            minX: imageBBox.maxX,
+                            minY: imageBBox.minY + imageRect.height / 2 - captionRect.height / 2
+                        };
+                        captionBBox.maxX = captionBBox.minX + captionRect.width;
+                        captionBBox.maxY = captionBBox.minY + captionRect.height;
+
                         if (this.coverageIndex.collides(captionBBox)) {
                             captionPosClass = "bottomCaption";
-                            shiftX = -captionRect.width / 2;
-                            shiftY = captionRect.height / 2;
-                            captionBBox = this.offsetBBox(captionBBox, shiftX, shiftY);
+                            captionBBox = {
+                                minX: imageBBox.minX + imageRect.width / 2 - captionRect.width / 2,
+                                minY: imageBBox.maxY
+                            };
+                            captionBBox.maxX = captionBBox.minX + captionRect.width;
+                            captionBBox.maxY = captionBBox.minY + captionRect.height;
                             if (this.coverageIndex.collides(captionBBox)) {
                                 captionPosClass = "leftCaption";
-                                shiftX = -captionRect.width / 2;
-                                shiftY = -captionRect.height / 2;
-                                captionBBox = this.offsetBBox(captionBBox, shiftX, shiftY);
+                                captionBBox = {
+                                    minX: imageBBox.minX - captionRect.width,
+                                    minY:
+                                        imageBBox.minY +
+                                        imageRect.height / 2 -
+                                        captionRect.height / 2
+                                };
+                                captionBBox.maxX = captionBBox.minX + captionRect.width;
+                                captionBBox.maxY = captionBBox.minY + captionRect.height;
                             }
                         }
                     }
@@ -191,15 +203,16 @@ export default {
     width: max-content;
     text-align: center;
     pointer-events: none;
+    font-size: 0.8em;
 }
 .topCaption {
     left: 0;
     top: -50%;
-    transform: translate(-50%, -105%);
+    transform: translate(-50%, -100%);
 }
 .bottomCaption {
     left: 0;
-    top: 100%;
+    top: 50%;
     transform: translate(-50%, 0%);
 }
 .leftCaption {
@@ -208,7 +221,7 @@ export default {
     transform: translate(0, -50%);
 }
 .rightCaption {
-    left: 100%;
+    left: 50%;
     top: 0;
     transform: translate(0, -50%);
 }
@@ -229,5 +242,8 @@ export default {
     mix-blend-mode: screen;
     pointer-events: none;
     content: "";
+}
+.mapMarker.stayingOn:hover .caption {
+    text-shadow: #fff 1px 0 10px;
 }
 </style>
