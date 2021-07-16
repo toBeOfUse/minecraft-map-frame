@@ -199,7 +199,6 @@ export default {
     position: absolute;
     height: 25px;
     width: 25px;
-    z-index: 8;
     @include standard-transitions;
     @media (max-aspect-ratio: 1/1) {
         height: 18px;
@@ -212,12 +211,13 @@ export default {
 }
 .mapMarker.displayingCaption {
     opacity: 1;
-    z-index: 10;
 }
 .markerImage {
     transform: translate(-50%, -50%);
     height: 100%;
     width: 100%;
+    position: absolute;
+    z-index: 99;
 }
 .caption {
     opacity: 0;
@@ -234,6 +234,7 @@ export default {
     @media (max-aspect-ratio: 1/1) {
         font-size: 0.75em;
     }
+    z-index: 100;
 }
 
 .topCaption {
