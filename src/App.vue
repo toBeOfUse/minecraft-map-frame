@@ -108,21 +108,12 @@
                 :style="getOutlinePos(3)"
             />
             -->
-            <div
-                class="mapMarker"
-                :style="collage.getPosWithinCollage(location).toCSS()"
+            <MapMarker
                 v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
-            >
-                <img
-                    :src="markerIcons[location.type]"
-                    style="height: 100%; width: 100%"
-                    class="markerImage"
-                />
-                <span class="caption">
-                    {{ location.text }}
-                </span>
-            </div>
+                :position="collage.getPosWithinCollage(location).toCSS()"
+                :POI="location"
+            />
         </div>
         <div id="cornerModal">
             <span
@@ -143,7 +134,7 @@
                     Other fun stuff
                 </label>
             </div>
-            <span v-if="currentlyCenteredMap" style="white-space: pre">
+            <span v-if="currentlyCenteredMap" style="white-space: pre; text-align: center">
                 Map ID: #{{ currentlyCenteredMap.id }}
                 <br />
                 {{ getEdgeLength(zoomLevel) }} x {{ getEdgeLength(zoomLevel) }} blocks
@@ -160,6 +151,7 @@ import { vueWindowSizeMixin } from "vue-window-size";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapOutlines from "./MapOutlines.vue";
+import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
@@ -167,7 +159,7 @@ import { POIType } from "./Types";
 
 export default {
     name: "App",
-    components: { MapOutlines },
+    components: { MapOutlines, MapMarker },
     data: () => ({
         collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",
@@ -182,10 +174,6 @@ export default {
         lastPanningX: -1,
         lastPanningY: -1,
         currentIsland: null,
-        markerIcons: {
-            normal: "/marker.png",
-            village: "/emerald.png"
-        },
         allowedPOITypes: Object.values(POIType),
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
         // whilst zooming in or out, it is necessary to have loaded into the DOM the
@@ -760,57 +748,5 @@ body {
     position: absolute;
     user-select: none;
     @include standard-transitions;
-}
-.mapMarker {
-    position: absolute;
-    height: 25px;
-    width: 25px;
-    z-index: 8;
-    @include standard-transitions;
-}
-.appZoomedIn .mapMarker {
-    height: 40px;
-    width: 40px;
-}
-.mapMarker:hover {
-    opacity: 1;
-    z-index: 10;
-}
-.markerImage {
-    transform: translate(-50%, -50%);
-}
-.caption {
-    opacity: 0;
-    position: absolute;
-    color: #ddd;
-    background-color: #00000099;
-    padding: 5px;
-    border-radius: 6px;
-    transition: opacity 100ms;
-    /* position sometimes overriden by javascript */
-    left: 0;
-    top: -50%;
-    transform: translate(-50%, -105%);
-    max-width: 125px;
-    width: max-content;
-    text-align: center;
-    pointer-events: none;
-}
-.mapMarker:hover .caption {
-    opacity: 1;
-}
-.mapMarker:hover::after {
-    border-radius: 50%;
-    opacity: 0.6;
-    background-color: #1be91b;
-    filter: blur(10px);
-    width: 35px;
-    height: 35px;
-    position: absolute;
-    left: 0;
-    top: 0;
-    transform: translate(-50%, -50%);
-    mix-blend-mode: screen;
-    content: "";
 }
 </style>
