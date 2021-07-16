@@ -115,7 +115,6 @@ export default {
                     maxX: captionRect.right - this.fullMapPos.left,
                     maxY: captionRect.bottom - this.fullMapPos.top
                 };
-                console.log("testing for caption overlaps with initial box", captionBBox);
                 const imageBBox = {
                     minX: imageRect.left - this.fullMapPos.left,
                     minY: imageRect.top - this.fullMapPos.top,
@@ -164,7 +163,6 @@ export default {
                                         maxY: captionRect.bottom - this.fullMapPos.top
                                     };
                                     for (const overlap of topCollision) {
-                                        console.log("removing", overlap);
                                         overlap.killSwitch();
                                     }
                                 }
@@ -183,7 +181,7 @@ export default {
         }
     },
     beforeDestroy() {
-        if (this.captionPosBox) {
+        if (this.captionPosBBox) {
             this.coverageIndex.remove(this.captionPosBBox);
         }
     }
@@ -232,7 +230,7 @@ export default {
     text-align: center;
     pointer-events: none;
     @media (max-aspect-ratio: 1/1) {
-        font-size: 0.8em;
+        font-size: 0.75em;
     }
 }
 
