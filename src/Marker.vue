@@ -18,6 +18,7 @@
     </div>
 </template>
 <script>
+import RBush from "rbush";
 import { PointOfInterest } from "./Types";
 export default {
     data: () => ({
@@ -32,6 +33,10 @@ export default {
     props: {
         POI: { type: PointOfInterest, required: true },
         position: {
+            required: true
+        },
+        coverageIndex: {
+            type: RBush,
             required: true
         }
     },

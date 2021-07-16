@@ -113,6 +113,7 @@
                 :key="location.x + ',' + location.y"
                 :position="collage.getPosWithinCollage(location).toCSS()"
                 :POI="location"
+                :coverageIndex="captionCoverageIndex"
             />
         </div>
         <div id="cornerModal">
@@ -148,6 +149,7 @@
 
 <script>
 import { vueWindowSizeMixin } from "vue-window-size";
+import RBush from "rbush";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapOutlines from "./MapOutlines.vue";
@@ -176,16 +178,17 @@ export default {
         currentIsland: null,
         allowedPOITypes: Object.values(POIType),
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
+        captionCoverageIndex: new RBush(),
         // whilst zooming in or out, it is necessary to have loaded into the DOM the
         // maps and POIs that are visible both before and after the change in zoom
         // level occurs, to ensure a smooth transition. these next two state
-        // components record the rectangles in [minX, minY, maxX, maxY] format in
+        // components record the rectangles in {minX, minY, maxX, maxY} format in
         // MapCollage units that contain the maps that are visible during each of
         // those states. these two components are only used when isMidZoom is true;
         // the rest of the time the current "window" containing the maps and POIs
-        // that are to be shown is calculated with MapCollage.getWindowFromViewport.
-        zoomedOutWindow: [NaN, NaN, NaN, NaN],
-        zoomedInWindow: [NaN, NaN, NaN, NaN]
+        // that are to be shown is calculated with MapCollage.getBBoxFromViewport.
+        zoomedOutWindow: {},
+        zoomedInWindow: {}
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -257,13 +260,13 @@ export default {
                 this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                 this.poiTypeFilter = "byIsland";
                 this.renderingSubMaps = true;
-                this.zoomedInWindow = this.collage.getWindowCenteredOnMap(
+                this.zoomedInWindow = this.collage.getBBoxCenteredOnMap(
                     { x, y },
                     3,
                     0,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
-                this.zoomedOutWindow = this.collage.getWindowFromViewport(
+                this.zoomedOutWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
@@ -287,13 +290,13 @@ export default {
                 this.poiTypeFilter = "byProximity";
                 this.renderingSubMaps = false;
 
-                this.zoomedOutWindow = this.collage.getWindowCenteredOnMap(
+                this.zoomedOutWindow = this.collage.getBBoxCenteredOnMap(
                     map,
                     0,
                     3,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
-                this.zoomedInWindow = this.collage.getWindowFromViewport(
+                this.zoomedInWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
@@ -448,12 +451,9 @@ export default {
                 if (this.isMidZoom) {
                     const zoomedOutMaps = this.collage.items.searchMaps(
                         level,
-                        ...this.zoomedOutWindow
+                        this.zoomedOutWindow
                     );
-                    const zoomedInMaps = this.collage.items.searchMaps(
-                        level,
-                        ...this.zoomedInWindow
-                    );
+                    const zoomedInMaps = this.collage.items.searchMaps(level, this.zoomedInWindow);
                     // remove duplicates
                     const files = new Set();
                     const allMaps = [];
@@ -465,12 +465,12 @@ export default {
                     }
                     return allMaps;
                 } else {
-                    const openWindow = this.collage.getWindowFromViewport(
+                    const openWindow = this.collage.getBBoxFromViewport(
                         this.fullMapPos,
                         new Dimensions(this.windowWidth, this.windowHeight)
                     );
 
-                    return this.collage.items.searchMaps(level, ...openWindow);
+                    return this.collage.items.searchMaps(level, openWindow);
                 }
             }
         },
@@ -591,10 +591,10 @@ export default {
             let narrowedDownPoints = [];
             if (this.isMidZoom) {
                 let points;
-                points = this.collage.items.searchPOIs(3, ...this.zoomedOutWindow);
-                points = points.concat(this.collage.items.searchPOIs(0, ...this.zoomedOutWindow));
-                points = points.concat(this.collage.items.searchPOIs(3, ...this.zoomedInWindow));
-                points = points.concat(this.collage.items.searchPOIs(0, ...this.zoomedInWindow));
+                points = this.collage.items.searchPOIs(3, this.zoomedOutWindow);
+                points = points.concat(this.collage.items.searchPOIs(0, this.zoomedOutWindow));
+                points = points.concat(this.collage.items.searchPOIs(3, this.zoomedInWindow));
+                points = points.concat(this.collage.items.searchPOIs(0, this.zoomedInWindow));
                 const IDs = new Set();
                 for (const point of points) {
                     if (!IDs.has(point.id)) {
@@ -603,14 +603,14 @@ export default {
                     }
                 }
             } else {
-                const currentWindow = this.collage.getWindowFromViewport(
+                const currentWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
-                narrowedDownPoints = this.collage.items.searchPOIs(3, ...currentWindow);
+                narrowedDownPoints = this.collage.items.searchPOIs(3, currentWindow);
                 if (this.outliningSubMaps) {
                     narrowedDownPoints = narrowedDownPoints.concat(
-                        this.collage.items.searchPOIs(0, ...currentWindow)
+                        this.collage.items.searchPOIs(0, currentWindow)
                     );
                 }
             }

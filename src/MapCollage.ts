@@ -6,11 +6,11 @@ import {
   Coords,
   getEdgeLength,
   ItemsInLevel,
-  Window,
 } from "./Types";
 import Island from "./Island";
 
-import Flatbush from "flatbush";
+import RBush from "rbush";
+import { BBox } from "rbush";
 
 /**
  * This interface is only used for the result of importing processed_maps.json; the
@@ -24,36 +24,94 @@ interface MapsByLevel {
   level4: Map[];
 }
 
+interface IndexedItem<Type> extends BBox {
+  item: Type;
+}
+
+class MyRBush<Type> extends RBush<IndexedItem<Type>> {
+  minX = Infinity;
+  minY = Infinity;
+  maxX = -Infinity;
+  maxY = -Infinity;
+  updateMinMax(item: IndexedItem<Type>) {
+    if (item.minX < this.minX) {
+      this.minX = item.minX;
+    }
+    if (item.minY < this.minY) {
+      this.minY = item.minY;
+    }
+    if (item.maxX > this.maxX) {
+      this.maxX = item.maxX;
+    }
+    if (item.maxY > this.maxY) {
+      this.maxY = item.maxY;
+    }
+  }
+  load(items: ReadonlyArray<IndexedItem<Type>>): MyRBush<Type> {
+    for (const item of items) {
+      this.updateMinMax(item);
+    }
+    super.load(items);
+    return this;
+  }
+  insert(item: IndexedItem<Type>): MyRBush<Type> {
+    this.updateMinMax(item);
+    super.insert(item);
+    return this;
+  }
+  remove() {
+    console.error(
+      "remove operations are not supported in this application bc they are " +
+        "not necessary and would require new minimum and maximum xs and ys to be found"
+    );
+    return this;
+  }
+  getSearchResults(bbox: BBox): Type[] {
+    return super.search(bbox).map((result) => result.item);
+  }
+  getAll(): Type[] {
+    return super.all().map((result) => result.item);
+  }
+}
+
 /**
  * This class stores both Maps and PointsOfInterest in indexed and unindexed form.
  * Each of the four instance variables are possibly-sparse arrays where the items
  * corresponding to level 0 are stored at this.instanceVariable[0], and so on.
  */
 class IndexedMapItems {
-  mapIndex: Flatbush[] = [];
-  POIIndex: Flatbush[] = [];
+  mapIndex: MyRBush<Map>[] = [];
+  POIIndex: MyRBush<PointOfInterest>[] = [];
   maps: ItemsInLevel<Map>[] = [];
   pointsOfInterest: ItemsInLevel<PointOfInterest>[] = [];
 
   constructor(itemGroups: ItemsInLevel<Map | PointOfInterest>[]) {
     for (const itemGroup of itemGroups) {
-      const newIndex = new Flatbush(itemGroup.items.length);
       if ("file" in itemGroup.items[0]) {
-        for (const item of itemGroup.items) {
-          const edgeLength = getEdgeLength(itemGroup.level);
-          newIndex.add(
-            item.x,
-            item.y,
-            item.x + edgeLength,
-            item.y + edgeLength
-          );
-        }
+        const newIndex = new MyRBush<Map>();
+        const edgeLength = getEdgeLength(itemGroup.level);
+        newIndex.load(
+          itemGroup.items.map((map) => ({
+            minX: map.x,
+            minY: map.y,
+            maxX: map.x + edgeLength,
+            maxY: map.y + edgeLength,
+            item: map as Map,
+          }))
+        );
         this.maps[itemGroup.level] = itemGroup as ItemsInLevel<Map>;
         this.mapIndex[itemGroup.level] = newIndex;
       } else if ("text" in itemGroup.items[0]) {
-        for (const item of itemGroup.items) {
-          newIndex.add(item.x, item.y, item.x, item.y);
-        }
+        const newIndex = new MyRBush<PointOfInterest>();
+        newIndex.load(
+          itemGroup.items.map((poi) => ({
+            minX: poi.x,
+            minY: poi.y,
+            maxX: poi.x,
+            maxY: poi.y,
+            item: poi as PointOfInterest,
+          }))
+        );
         this.pointsOfInterest[itemGroup.level] = itemGroup as ItemsInLevel<
           PointOfInterest
         >;
@@ -61,30 +119,15 @@ class IndexedMapItems {
       } else {
         console.error("failed to index group of strange items", itemGroup);
       }
-      newIndex.finish();
     }
   }
 
-  searchMaps(
-    level: number,
-    minX: number,
-    minY: number,
-    maxX: number,
-    maxY: number
-  ): Map[] {
-    const locations = this.mapIndex[level].search(minX, minY, maxX, maxY);
-    return locations.map((l) => this.maps[level].items[l]);
+  searchMaps(level: number, bbox: BBox): Map[] {
+    return this.mapIndex[level].getSearchResults(bbox);
   }
 
-  searchPOIs(
-    level: number,
-    minX: number,
-    minY: number,
-    maxX: number,
-    maxY: number
-  ): PointOfInterest[] {
-    const locations = this.POIIndex[level].search(minX, minY, maxX, maxY);
-    return locations.map((l) => this.pointsOfInterest[level].items[l]);
+  searchPOIs(level: number, bbox: BBox): PointOfInterest[] {
+    return this.POIIndex[level].getSearchResults(bbox);
   }
 
   get allMaps(): Map[] {
@@ -147,10 +190,12 @@ export default class MapCollage {
     mapsAsItems[3] = { level: 3, items: maps.level3 };
 
     // Object.values makes these arrays no longer sparse
-    this.items = new IndexedMapItems(
-      Object.values(
-        (mapsAsItems as ItemsInLevel<any>[]).concat(
-          pointsOfInterest as ItemsInLevel<any>[]
+    this.items = Object.freeze(
+      new IndexedMapItems(
+        Object.values(
+          (mapsAsItems as ItemsInLevel<any>[]).concat(
+            pointsOfInterest as ItemsInLevel<any>[]
+          )
         )
       )
     );
@@ -158,13 +203,12 @@ export default class MapCollage {
     // TODO: figure out what to do in the hypothetical scenario where this map is not
     // present
     const originCenter = getEdgeLength(3) / 2;
-    this.originMap = this.items.searchMaps(
-      3,
-      originCenter,
-      originCenter,
-      originCenter,
-      originCenter
-    )[0];
+    this.originMap = this.items.searchMaps(3, {
+      minX: originCenter,
+      minY: originCenter,
+      maxX: originCenter,
+      maxY: originCenter,
+    })[0];
 
     console.log("COLLAGE: found origin map:", this.originMap);
 
@@ -302,30 +346,30 @@ export default class MapCollage {
     );
   }
 
-  getWindowCenteredOnMap(
+  getBBoxCenteredOnMap(
     mapCoords: Coords,
     currentLevel: number,
     mapLevel: number,
     viewport: Dimensions
-  ): Window {
+  ): BBox {
     const scaleFactor = getEdgeLength(mapLevel) / getEdgeLength(currentLevel);
     const windowWidth = (viewport.width / this.pxPerBlock) * scaleFactor;
     const windowHeight = (viewport.height / this.pxPerBlock) * scaleFactor;
     const mapCenterX = mapCoords.x + getEdgeLength(mapLevel) / 2;
     const mapCenterY = mapCoords.y + getEdgeLength(mapLevel) / 2;
-    return [
-      mapCenterX - windowWidth / 2,
-      mapCenterY - windowHeight / 2,
-      mapCenterX + windowWidth / 2,
-      mapCenterY + windowHeight / 2,
-    ];
+    return {
+      minX: mapCenterX - windowWidth / 2,
+      minY: mapCenterY - windowHeight / 2,
+      maxX: mapCenterX + windowWidth / 2,
+      maxY: mapCenterY + windowHeight / 2,
+    };
   }
 
-  getWindowFromViewport(
+  getBBoxFromViewport(
     fullMapPos: Position,
     viewport: Dimensions,
     margin: number = 256
-  ): Window {
+  ): BBox {
     const viewportMin = this.getCoordsWithinCollageFromViewportPos(
       new Position(0, 0),
       fullMapPos
@@ -334,12 +378,12 @@ export default class MapCollage {
       new Position(viewport.width, viewport.height),
       fullMapPos
     );
-    return [
-      viewportMin.x - margin,
-      viewportMin.y - margin,
-      viewportMax.x + margin,
-      viewportMax.y + margin,
-    ];
+    return {
+      minX: viewportMin.x - margin,
+      minY: viewportMin.y - margin,
+      maxX: viewportMax.x + margin,
+      maxY: viewportMax.y + margin,
+    };
   }
 
   /**
@@ -350,13 +394,12 @@ export default class MapCollage {
    */
   getMapFromCoords(x: number, y: number, level: number): Map | undefined {
     const halfEdge = getEdgeLength(level) / 2;
-    return this.items.searchMaps(
-      level,
-      x + halfEdge,
-      y + halfEdge,
-      x + halfEdge,
-      y + halfEdge
-    )[0];
+    return this.items.searchMaps(level, {
+      minX: x + halfEdge,
+      minY: y + halfEdge,
+      maxX: x + halfEdge,
+      maxY: y + halfEdge,
+    })[0];
   }
 
   mapExistsAt(mapCoords: Coords, mapLevel: number): boolean {
@@ -413,12 +456,11 @@ export default class MapCollage {
       viewportPos,
       collagePos
     );
-    return this.items.searchMaps(
-      mapLevel,
-      coordsWithinCollage.x,
-      coordsWithinCollage.y,
-      coordsWithinCollage.x,
-      coordsWithinCollage.y
-    )[0];
+    return this.items.searchMaps(mapLevel, {
+      minX: coordsWithinCollage.x,
+      minY: coordsWithinCollage.y,
+      maxX: coordsWithinCollage.x,
+      maxY: coordsWithinCollage.y,
+    })[0];
   }
 }
