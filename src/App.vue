@@ -134,7 +134,7 @@
                     Other fun stuff
                 </label>
             </div>
-            <span v-if="currentlyCenteredMap" style="white-space: pre; text-align: center">
+            <span v-if="currentlyCenteredMap" class="mapInfo">
                 Map ID: #{{ currentlyCenteredMap.id }}
                 <br />
                 {{ getEdgeLength(zoomLevel) }} x {{ getEdgeLength(zoomLevel) }} blocks
@@ -742,6 +742,12 @@ body {
     }
     :last-child {
         margin-bottom: 0;
+    }
+}
+.mapInfo {
+    white-space: pre;
+    @media (max-aspect-ratio: 1/1) {
+        text-align: center;
     }
 }
 .subMap {
