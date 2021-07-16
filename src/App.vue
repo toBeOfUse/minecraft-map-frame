@@ -111,10 +111,25 @@
             <MapMarker
                 v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
-                :position="collage.getPosWithinCollage(location).toCSS()"
+                :position="collage.getPosWithinCollage(location)"
+                :fullMapPos="fullMapPos"
                 :POI="location"
                 :coverageIndex="captionCoverageIndex"
             />
+            <!-- displaying caption coverage for debugging -->
+            <!-- <div
+                v-for="(rect, i) in captionCoverageIndex.all()"
+                :key="i"
+                :style="{
+                    backgroundColor: 'red',
+                    opacity: 0.3,
+                    position: 'absolute',
+                    left: rect.minX + 'px',
+                    top: rect.minY + 'px',
+                    height: rect.maxY - rect.minY + 'px',
+                    width: rect.maxX - rect.minX + 'px',
+                }"
+            /> -->
         </div>
         <div id="cornerModal">
             <span
