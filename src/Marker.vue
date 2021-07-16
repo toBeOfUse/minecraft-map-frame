@@ -39,7 +39,8 @@ export default {
         fading: false,
         markerIcons: {
             normal: "/marker.png",
-            village: "/emerald.png"
+            village: "/emerald.png",
+            mining: "/pickaxe.png"
         },
         handleNonMarkerClick: null,
         captionPosClass: "topCaption",

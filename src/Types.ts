@@ -175,6 +175,7 @@ interface Map {
 enum POIType {
   Normal = "normal",
   Village = "village",
+  Mining = "mining",
 }
 
 interface StoredPOI {

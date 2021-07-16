@@ -1,6 +1,7 @@
 import { PointOfInterest, POIType, ItemsInLevel } from "@/Types";
 const Village = POIType.Village;
 const Normal = POIType.Normal;
+const Mining = POIType.Mining;
 
 const pois: ItemsInLevel<PointOfInterest>[] = [];
 
@@ -65,7 +66,7 @@ pois[0] = {
       x: 752.4,
       y: 607.85,
       text: "entrance to Cursed Cave",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1087.28,
@@ -101,13 +102,13 @@ pois[0] = {
       x: 67.39,
       y: 52.14,
       text: "triangle mines entrance",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 68.16,
       y: 122.39,
       text: "triangle mines exit",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 81.44,
@@ -173,7 +174,7 @@ pois[0] = {
       x: 2416.79,
       y: -1318.03,
       text: "vatican ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2300.16,
@@ -275,7 +276,7 @@ pois[3] = {
       x: 861.12,
       y: 455.44,
       text: "remy's front entrance",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 178.48,
@@ -287,7 +288,7 @@ pois[3] = {
       x: 154,
       y: 441.84,
       text: "cool ravine that goes through a mountain",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 253.76,
@@ -299,19 +300,19 @@ pois[3] = {
       x: 530.16,
       y: 920,
       text: "weird mini-ravine; visible iron",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 650.96,
       y: 297.04,
       text: "ravine through sand and sandstone",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 234.08,
       y: 456.88,
       text: "big cave boi",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 987.84,
@@ -323,19 +324,19 @@ pois[3] = {
       x: 884.96,
       y: 586.48,
       text: "remy's back entrance",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 827.6,
       y: 662.72,
       text: "scary hole",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1914.32,
       y: 850,
       text: "three-passageway pit",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -39.92,
@@ -359,7 +360,7 @@ pois[3] = {
       x: -1013.59,
       y: -909.47,
       text: "spidery mineshaft & ravine & bed & breakfast",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -779.6,
@@ -449,7 +450,7 @@ pois[3] = {
       x: -666.48,
       y: -986.08,
       text: "hill of many holes",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -560.16,
@@ -467,7 +468,7 @@ pois[3] = {
       x: -387.04,
       y: 932,
       text: "baby ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -247.04,
@@ -485,7 +486,7 @@ pois[3] = {
       x: -307.28,
       y: 724.24,
       text: "taiga ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -731.76,
@@ -497,7 +498,7 @@ pois[3] = {
       x: -713.76,
       y: 460.8,
       text: "spruce village ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1451.36,
@@ -544,7 +545,7 @@ pois[3] = {
     {
       x: -1093.47,
       y: -341.69,
-      text: "desert pyramid (skeletons?)",
+      text: "desert pyramid (scared 2 touch)",
       type: Normal,
     },
     {
@@ -575,7 +576,7 @@ pois[3] = {
       x: 2579.32,
       y: 747.4,
       text: "complementary colors ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2283.55,
@@ -605,7 +606,7 @@ pois[3] = {
       x: 2380.13,
       y: -497.51,
       text: "redstone ravine entrance island",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2319.77,
@@ -629,7 +630,7 @@ pois[3] = {
       x: 2168.87,
       y: -535.24,
       text: "mean green ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2389.18,
@@ -749,7 +750,7 @@ pois[3] = {
       x: 1441.54,
       y: 1076.36,
       text: "the straight and narrow ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1689.01,
@@ -785,7 +786,7 @@ pois[3] = {
       x: -301.35,
       y: 1240.84,
       text: "look before you ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -687.65,
@@ -821,19 +822,19 @@ pois[3] = {
       x: 2385.25,
       y: -1472.11,
       text: "vatican ravine back entrance",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 819.15,
       y: 1404.21,
       text: "amethyst cave",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 762.19,
       y: 942.32,
       text: "stumbleupon ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -1836.69,
@@ -857,7 +858,7 @@ pois[3] = {
       x: 2302.19,
       y: -2138.22,
       text: "amethyst cave (deep) (beware: cave spiders)",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2213.28,
@@ -905,7 +906,7 @@ pois[3] = {
       x: 3000.02,
       y: -2977.54,
       text: "savanna ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 2402.65,
@@ -923,7 +924,7 @@ pois[3] = {
       x: 2327.21,
       y: -2081.49,
       text: "chunk anomaly mining site",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -881.35,
@@ -941,7 +942,7 @@ pois[3] = {
       x: 1719.06,
       y: -2216.97,
       text: "crevasse: deep; watery",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1837.61,
@@ -959,7 +960,7 @@ pois[3] = {
       x: 1623.6,
       y: -2775.85,
       text: "half-seen ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: 1106.29,
@@ -989,7 +990,7 @@ pois[3] = {
       x: -1133.85,
       y: -1825.91,
       text: "symmes' hole",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -2042.23,
@@ -1001,7 +1002,7 @@ pois[3] = {
       x: -1563.41,
       y: -1636.54,
       text: "intriguing ravine",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -1113.84,
@@ -1013,7 +1014,7 @@ pois[3] = {
       x: -952.18,
       y: -1718.14,
       text: "amethyst cave entrance (look for a purple tree)",
-      type: Normal,
+      type: Mining,
     },
     {
       x: -942.94,
@@ -1037,7 +1038,7 @@ pois[3] = {
       x: -473.36,
       y: -1111.53,
       text: "ravioli ravine",
-      type: Normal,
+      type: Mining,
     },
   ].map((p) => new PointOfInterest(p, 3)),
 };
