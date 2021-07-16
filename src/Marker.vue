@@ -8,6 +8,7 @@
         @click="
             clicked = !clicked;
             if (!clicked) hovered = false;
+            $event.targetedMapMarker = true;
         "
     >
         <img :src="markerIcons[POI.type]" class="markerImage" />
@@ -26,7 +27,7 @@ export default {
             normal: "/marker.png",
             village: "/emerald.png"
         },
-        console
+        handleNonMarkerClick: null
     }),
     props: {
         POI: { type: PointOfInterest, required: true },
@@ -34,9 +35,29 @@ export default {
             required: true
         }
     },
+    created() {
+        // create an arrow function unique to each instance of the component that
+        // will be attached/removed as an event listener to the document body when
+        // this.clicked changes so it can remove this element's "clicked" status
+        // after a non-marker element is clicked
+        this.handleNonMarkerClick = event => {
+            if (!event.targetedMapMarker) {
+                this.clicked = false;
+            }
+        };
+    },
     computed: {
         litUp() {
             return this.clicked || this.hovered;
+        }
+    },
+    watch: {
+        clicked(newValue) {
+            if (newValue) {
+                document.body.addEventListener("click", this.handleNonMarkerClick);
+            } else {
+                document.body.removeEventListener("click", this.handleNonMarkerClick);
+            }
         }
     }
 };
@@ -86,7 +107,7 @@ export default {
 .mapMarker.litUp .caption {
     opacity: 1;
 }
-.mapMarker.litUp::after {
+.mapMarker:hover::after {
     border-radius: 50%;
     opacity: 0.6;
     background-color: #1be91b;
