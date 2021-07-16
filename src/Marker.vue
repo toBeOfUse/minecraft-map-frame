@@ -44,7 +44,8 @@ export default {
         handleNonMarkerClick: null,
         captionPosClass: "topCaption",
         captionPosBBox: null,
-        lastMouseDownFullMapPos: null
+        lastMouseDownFullMapPos: null,
+        killSwitch: null
     }),
     props: {
         POI: { type: PointOfInterest, required: true },
@@ -76,6 +77,11 @@ export default {
         this.trackMapPos = () => {
             this.lastMouseDownFullMapPos = this.fullMapPos;
         };
+        this.killSwitch = () => {
+            console.log("kill switch called");
+            this.clicked = false;
+            this.fading = true;
+        };
         this.lastMouseDownFullMapPos = this.fullMapPos;
     },
     methods: {
@@ -99,7 +105,6 @@ export default {
             }
         },
         displayingCaption(newValue, oldValue) {
-            console.log("displayingCaption changing from", oldValue, "to", newValue);
             if (newValue && !oldValue) {
                 this.fading = false;
                 const captionRect = this.$refs.caption.getBoundingClientRect();
@@ -110,6 +115,7 @@ export default {
                     maxX: captionRect.right - this.fullMapPos.left,
                     maxY: captionRect.bottom - this.fullMapPos.top
                 };
+                console.log("testing for caption overlaps with initial box", captionBBox);
                 const imageBBox = {
                     minX: imageRect.left - this.fullMapPos.left,
                     minY: imageRect.top - this.fullMapPos.top,
@@ -120,7 +126,8 @@ export default {
                 if (captionPosClass == "topCaption") {
                     // otherwise, the caption was brought back mid-way through
                     // fading out and we should just leave it for visual continuity
-                    if (this.coverageIndex.collides(captionBBox)) {
+                    const topCollision = this.coverageIndex.search(captionBBox);
+                    if (topCollision.length) {
                         captionPosClass = "rightCaption";
                         captionBBox = {
                             minX: imageBBox.maxX,
@@ -148,25 +155,42 @@ export default {
                                 };
                                 captionBBox.maxX = captionBBox.minX + captionRect.width;
                                 captionBBox.maxY = captionBBox.minY + captionRect.height;
+                                if (this.coverageIndex.collides(captionBBox)) {
+                                    captionPosClass = "topCaption";
+                                    captionBBox = {
+                                        minX: captionRect.left - this.fullMapPos.left,
+                                        minY: captionRect.top - this.fullMapPos.top,
+                                        maxX: captionRect.right - this.fullMapPos.left,
+                                        maxY: captionRect.bottom - this.fullMapPos.top
+                                    };
+                                    for (const overlap of topCollision) {
+                                        console.log("removing", overlap);
+                                        overlap.killSwitch();
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                // captionBBox = { ...captionBBox, ref: this.$refs.caption }; // for debugging only
+                captionBBox = { ...captionBBox, killSwitch: this.killSwitch };
                 this.coverageIndex.insert(captionBBox);
-                console.log("items in coverage index", this.coverageIndex.all().length);
                 this.captionPosBBox = captionBBox;
                 this.captionPosClass = captionPosClass;
             } else if (!newValue && oldValue && this.captionPosBBox) {
                 this.coverageIndex.remove(this.captionPosBBox);
                 this.captionPosBBox = null;
-                console.log("items in coverage index", this.coverageIndex.all().length);
             }
+        }
+    },
+    beforeDestroy() {
+        if (this.captionPosBox) {
+            this.coverageIndex.remove(this.captionPosBBox);
         }
     }
 };
 </script>
 <style lang="scss" scoped>
+// todo: move to its own file and use it from App.vue also
 @mixin standard-transitions {
     transition-duration: 1s;
     transition-property: width, height, left, top, opacity, visibility;
@@ -203,8 +227,11 @@ export default {
     width: max-content;
     text-align: center;
     pointer-events: none;
-    font-size: 0.8em;
+    @media (max-aspect-ratio: 1/1) {
+        font-size: 0.8em;
+    }
 }
+
 .topCaption {
     left: 0;
     top: -50%;
