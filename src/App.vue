@@ -261,6 +261,71 @@ export default {
         }
     },
     methods: {
+        zoom(direction, map) {
+            if (direction == "in") {
+                const { x, y } = map;
+                console.log("map at this position was clicked", x, y);
+                this.isMidZoom = true;
+                this.currentIsland = Island.getIslandContainingMap(0, { x, y });
+                this.poiTypeFilter = "byIsland";
+                this.renderingSubMaps = true;
+                this.zoomedInWindow = this.collage.getWindowCenteredOnMap(
+                    { x, y },
+                    3,
+                    0,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
+                this.zoomedOutWindow = this.collage.getWindowFromViewport(
+                    this.fullMapPos,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this.zoomLevel = 0;
+                        // this.edgeLength updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                        this.fullMapPos = this.collage.getPosCenteredOnMap(
+                            { x, y },
+                            0,
+                            new Dimensions(this.windowWidth, this.windowHeight)
+                        );
+                    });
+                });
+            } else if (direction == "out") {
+                this.isMidZoom = true;
+                // this will have to be changed if we add support for multiple level 3
+                // islands
+                this.currentIsland = this.collage.islands[3].items[0];
+                this.poiTypeFilter = "byProximity";
+                this.renderingSubMaps = false;
+
+                this.zoomedOutWindow = this.collage.getWindowCenteredOnMap(
+                    map,
+                    0,
+                    3,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
+                this.zoomedInWindow = this.collage.getWindowFromViewport(
+                    this.fullMapPos,
+                    new Dimensions(this.windowWidth, this.windowHeight)
+                );
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        this.zoomLevel = 3;
+                        this.outliningSubMaps = false;
+                        // this.edgeLength updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                        this.fullMapPos = this.collage.getPosCenteredOnMap(
+                            map,
+                            3,
+                            new Dimensions(this.windowWidth, this.windowHeight)
+                        );
+                    });
+                });
+            } else {
+                console.error(direction, "is not a real direction");
+            }
+        },
         handleMouseMove(event) {
             if (!this.deployed) {
                 const eventPos = this.collage.getCoordsWithinCollageFromViewportPos(
@@ -333,36 +398,7 @@ export default {
                     0
                 );
                 if (clickedMap) {
-                    // code that handles zooming in
-                    // TODO: move code for zooming in and out into its own method
-                    const { x, y } = clickedMap;
-                    console.log("map at this position was clicked", x, y);
-                    this.isMidZoom = true;
-                    this.currentIsland = Island.getIslandContainingMap(0, { x, y });
-                    this.poiTypeFilter = "byIsland";
-                    this.renderingSubMaps = true;
-                    this.zoomedInWindow = this.collage.getWindowCenteredOnMap(
-                        { x, y },
-                        3,
-                        0,
-                        new Dimensions(this.windowWidth, this.windowHeight)
-                    );
-                    this.zoomedOutWindow = this.collage.getWindowFromViewport(
-                        this.fullMapPos,
-                        new Dimensions(this.windowWidth, this.windowHeight)
-                    );
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            this.zoomLevel = 0;
-                            // this.edgeLength updated when this.zoomLevel did
-                            this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                            this.fullMapPos = this.collage.getPosCenteredOnMap(
-                                { x, y },
-                                0,
-                                new Dimensions(this.windowWidth, this.windowHeight)
-                            );
-                        });
-                    });
+                    this.zoom("in", clickedMap);
                 } else {
                     console.log("area with no submap was clicked");
                 }
@@ -377,41 +413,12 @@ export default {
                     this.poiTypeFilter = "byProximity";
                 }
             } else {
-                // code that handles zooming out
-                this.isMidZoom = true;
-                // this will have to be changed if we add support for multiple level 3
-                // islands
-                this.currentIsland = this.collage.islands[3].items[0];
-                this.poiTypeFilter = "byProximity";
-                this.renderingSubMaps = false;
                 const currentLevel3Map = this.collage.getMapFromViewportPos(
                     new Position(this.windowWidth / 2, this.windowHeight / 2),
                     this.fullMapPos,
                     3
                 );
-                this.zoomedOutWindow = this.collage.getWindowCenteredOnMap(
-                    currentLevel3Map,
-                    0,
-                    3,
-                    new Dimensions(this.windowWidth, this.windowHeight)
-                );
-                this.zoomedInWindow = this.collage.getWindowFromViewport(
-                    this.fullMapPos,
-                    new Dimensions(this.windowWidth, this.windowHeight)
-                );
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        this.zoomLevel = 3;
-                        this.outliningSubMaps = false;
-                        // this.edgeLength updated when this.zoomLevel did
-                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
-                        this.fullMapPos = this.collage.getPosCenteredOnMap(
-                            currentLevel3Map,
-                            3,
-                            new Dimensions(this.windowWidth, this.windowHeight)
-                        );
-                    });
-                });
+                this.zoom("out", currentLevel3Map);
             }
         },
         zoomTransitionEnd(event) {
