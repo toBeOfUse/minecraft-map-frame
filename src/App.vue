@@ -67,7 +67,7 @@
             </svg>
             <transition name="fade">
                 <img
-                    v-if="currentlyCenteredMap && !outliningSubMaps && false"
+                    v-if="currentlyCenteredMap && !outliningSubMaps"
                     :src="'/maps/' + currentlyCenteredMap.file"
                     :key="currentlyCenteredMap.file"
                     :style="{
