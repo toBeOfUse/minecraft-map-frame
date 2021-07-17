@@ -17,6 +17,7 @@
             @touchcancel="panning = false"
             @mouseleave="panning = false"
             @transitionend="zoomTransitionEnd"
+            @wheel="handleWheel"
         >
             <img
                 v-for="map in getCurrentlyVisibleMaps(3)"
@@ -25,8 +26,8 @@
                 class="subMap"
                 :style="{
                     ...collage.getPosWithinCollage(map).toCSS(),
-                    width: edgeLength + 'px',
-                    height: edgeLength + 'px',
+                    width: level3MapSizePx + 'px',
+                    height: level3MapSizePx + 'px',
                 }"
             />
             <svg
@@ -66,12 +67,12 @@
             </svg>
             <transition name="fade">
                 <img
-                    v-if="currentlyCenteredMap && !outliningSubMaps && !isMidZoom"
+                    v-if="currentlyCenteredMap && !outliningSubMaps && false"
                     :src="'/maps/' + currentlyCenteredMap.file"
                     :key="currentlyCenteredMap.file"
                     :style="{
-                        width: edgeLength + 'px',
-                        height: edgeLength + 'px',
+                        width: level3MapSizePx + 'px',
+                        height: level3MapSizePx + 'px',
                         ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
                     }"
                     class="subMap"
@@ -84,8 +85,8 @@
                 class="subMap"
                 :style="{
                     ...collage.getPosWithinCollage(subMap).toCSS(),
-                    width: subMapEdgeLength + 'px',
-                    height: subMapEdgeLength + 'px',
+                    width: level0MapSizePx + 'px',
+                    height: level0MapSizePx + 'px',
                     visiblity: zoomLevel == 0 ? '' : 'hidden',
                     opacity: zoomLevel == 0 ? 1 : 0,
                 }"
@@ -97,17 +98,9 @@
                 :style="{
                     visiblity: outliningSubMaps ? '' : 'hidden',
                     opacity: outliningSubMaps ? 1 : 0,
-                    ...getOutlinePos(0),
+                    ...getOutlinePos(),
                 }"
             />
-            <!--
-            <MapOutlines
-                :zoomLevel="3"
-                :subMapBorderWidth=""
-                :collage="collage"
-                :style="getOutlinePos(3)"
-            />
-            -->
             <MapMarker
                 v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
@@ -130,6 +123,26 @@
                         top: rect.minY + 'px',
                         height: rect.maxY - rect.minY + 'px',
                         width: rect.maxX - rect.minX + 'px',
+                    }"
+                />
+                <div
+                    v-if="false"
+                    id="oldWindowDebug"
+                    :style="{
+                        position: 'absolute',
+                        backgroundColor: 'orange',
+                        opacity: 0.2,
+                        ...collage.BBoxToCSS(zoomedOutWindow),
+                    }"
+                />
+                <div
+                    v-if="zoomedInWindow"
+                    id="newWindowDebug"
+                    :style="{
+                        position: 'absolute',
+                        backgroundColor: 'purple',
+                        opacity: 0.2,
+                        ...collage.BBoxToCSS(zoomedInWindow),
                     }"
                 />
             </template>
@@ -238,12 +251,15 @@ export default {
         // the rest of the time the current "window" containing the maps and POIs
         // that are to be shown is calculated with MapCollage.getBBoxFromViewport.
         zoomedOutWindow: {},
-        zoomedInWindow: {}
+        zoomedInWindow: {},
+        scaleFactor: 1,
+        maxScaleFactor: 1.5,
+        minScaleFactor: 0.3
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
             mapLevel: 3,
-            edgeLengthPx: this.edgeLength
+            edgeLengthPx: this.level3MapSizePx
         });
         const preAreaMatch = location.hash.match(/^#level(\d+)x(-?\d+)z(-?\d+)$/);
         let successfullyLoadedNonDefaultStartingPoint = false;
@@ -271,7 +287,7 @@ export default {
                 this.currentIsland = currentIsland;
                 if (level == 0) {
                     this.outliningSubMaps = true;
-                    this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                    this.collage.resize({ mapLevel: 3, edgeLengthPx: this.level3MapSizePx });
                     this.fullMapPos = this.collage.getPosCenteredOn(
                         { x, y },
                         new Dimensions(this.windowWidth, this.windowHeight)
@@ -302,6 +318,52 @@ export default {
         }
     },
     methods: {
+        handleWheel(event) {
+            const oldViewport = new Dimensions(this.windowWidth, this.windowHeight);
+            const oldCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
+                new Position(this.windowWidth / 2, this.windowHeight / 2),
+                this.fullMapPos
+            );
+            let newFactor = this.scaleFactor + event.deltaY * -0.0005;
+            newFactor = clamp(newFactor, this.minScaleFactor, this.maxScaleFactor);
+            if (newFactor !== this.scaleFactor) {
+                this.isMidZoom = true;
+                this.zoomedOutWindow = this.collage.getBBoxFromViewport(
+                    this.fullMapPos,
+                    oldViewport,
+                    0
+                );
+                // const newViewport = new Dimensions(
+                //     this.windowWidth * (1 / (newFactor / this.scaleFactor)),
+                //     this.windowHeight * (1 / (newFactor / this.scaleFactor))
+                // );
+                this.collage.resize({
+                    mapLevel: 3,
+                    edgeLengthPx: this.level3MapSizePx * (newFactor / this.scaleFactor)
+                });
+                const newFullMapPos = this.collage.getPosCenteredOn(oldCenterPoint, oldViewport);
+                this.zoomedInWindow = this.collage.getBBoxFromViewport(
+                    newFullMapPos,
+                    oldViewport,
+                    0
+                );
+                this.collage.resize({
+                    mapLevel: 3,
+                    edgeLengthPx: this.level3MapSizePx
+                });
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        console.log("scale factor going from", this.scaleFactor, "to", newFactor);
+                        this.scaleFactor = newFactor;
+                        this.collage.resize({
+                            mapLevel: 3,
+                            edgeLengthPx: this.level3MapSizePx
+                        });
+                        this.fullMapPos = newFullMapPos;
+                    });
+                });
+            }
+        },
         zoom(direction, map) {
             if (direction == "in") {
                 const { x, y } = map;
@@ -323,8 +385,9 @@ export default {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         this.zoomLevel = 0;
-                        // this.edgeLength updated when this.zoomLevel did
-                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                        this.scaleFactor = 1;
+                        // this.level3MapSizePx updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.level3MapSizePx });
                         this.fullMapPos = this.collage.getPosCenteredOnMap(
                             { x, y },
                             0,
@@ -353,9 +416,10 @@ export default {
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
                         this.zoomLevel = 3;
+                        this.scaleFactor = 1;
                         this.outliningSubMaps = false;
-                        // this.edgeLength updated when this.zoomLevel did
-                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.edgeLength });
+                        // this.level3MapSizePx updated when this.zoomLevel did
+                        this.collage.resize({ mapLevel: 3, edgeLengthPx: this.level3MapSizePx });
                         this.fullMapPos = this.collage.getPosCenteredOnMap(
                             map,
                             3,
@@ -471,10 +535,10 @@ export default {
                 ? 1
                 : 0.7;
         },
-        getOutlinePos(zoomLevel) {
+        getOutlinePos() {
             // position outline so it sticks out of the sides of the map so that maps
             // on the edge can be outlined
-            const borderWidth = zoomLevel == 3 ? this.fullMapBorderWidth : this.subMapBorderWidth;
+            const borderWidth = this.subMapBorderWidth;
             const scaleFactor = this.zoomLevel == 3 ? 1 : 8;
             return {
                 position: "absolute",
@@ -541,24 +605,21 @@ export default {
                 this.windowHeight / this.collage.pxPerBlock
             );
         },
-        edgeLength() {
+        level3MapSizePx() {
             if (this.windowHeight > this.windowWidth) {
-                return 0.95 * this.windowWidth * (this.zoomLevel == 0 ? 8 : 1);
+                return 0.95 * this.windowWidth * this.scaleFactor * (this.zoomLevel == 0 ? 8 : 1);
             } else {
-                return 0.9 * this.windowHeight * (this.zoomLevel == 0 ? 8 : 1);
+                return 0.9 * this.windowHeight * this.scaleFactor * (this.zoomLevel == 0 ? 8 : 1);
             }
         },
-        subMapEdgeLength() {
-            return this.edgeLength / 8;
+        level0MapSizePx() {
+            return this.level3MapSizePx / 8;
         },
         subMapBorderWidth() {
             // this is the width of the sub-map borders at the initial zoom level in
             // pixels (it automatically becomes wider when we zoom in via the scaling
             // of the svg outline overlay via css)
             return 3;
-        },
-        fullMapBorderWidth() {
-            return this.subMapBorderWidth * 5; // shrug emoji
         },
         mapViewBox() {
             return (
@@ -650,9 +711,11 @@ export default {
             if (this.isMidZoom) {
                 let points;
                 points = this.collage.items.searchPOIs(3, this.zoomedOutWindow);
-                points = points.concat(this.collage.items.searchPOIs(0, this.zoomedOutWindow));
                 points = points.concat(this.collage.items.searchPOIs(3, this.zoomedInWindow));
-                points = points.concat(this.collage.items.searchPOIs(0, this.zoomedInWindow));
+                if (this.zoomLevel == 0) {
+                    points = points.concat(this.collage.items.searchPOIs(0, this.zoomedOutWindow));
+                    points = points.concat(this.collage.items.searchPOIs(0, this.zoomedInWindow));
+                }
                 const IDs = new Set();
                 for (const point of points) {
                     if (!IDs.has(point.id)) {

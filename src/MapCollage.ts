@@ -312,8 +312,8 @@ export default class MapCollage {
   }
 
   getPosWithinCollage(absCoords: Coords): Position {
-    // translates a map's relative coords obtained from getCoordsRelativeToCollage to
-    // an object that can be used to position the map within the collage with CSS
+    // translates coords expressed in MapCollage units to an object that can be used
+    // to position the map within the collage with CSS
     const relCoords = this.getCoordsRelativeToCollage(absCoords);
     return new Position(
       relCoords.x * this.pxPerBlock,
@@ -438,7 +438,7 @@ export default class MapCollage {
   ): Coords {
     // given a position within the viewport and the current position of the full
     // collage, this method translates the position within the viewport to coords in
-    // minecraft units (1 unit == 1 block, origin is arbitrary)
+    // minecraft units (1 unit == 1 block)
     const x = (-collagePos.left + viewportPos.left) / this.pxPerBlock;
     const y = (-collagePos.top + viewportPos.top) / this.pxPerBlock;
     return { x: x + this.lowestMapCoords.x, y: y + this.lowestMapCoords.y };
@@ -462,5 +462,17 @@ export default class MapCollage {
       maxX: coordsWithinCollage.x,
       maxY: coordsWithinCollage.y,
     })[0];
+  }
+
+  BBoxToCSS(bbox: BBox) {
+    const position = this.getPosWithinCollage({
+      x: bbox.minX,
+      y: bbox.minY,
+    }).toCSS();
+    return {
+      ...position,
+      width: (bbox.maxX - bbox.minX) * this.pxPerBlock + "px",
+      height: (bbox.maxY - bbox.minY) * this.pxPerBlock + "px",
+    };
   }
 }
