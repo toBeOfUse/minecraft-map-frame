@@ -2,7 +2,7 @@
     <div id="app" :class="zoomLevel == 0 ? 'appZoomedIn' : ''">
         <div
             class="mapContainer"
-            :class="isMidZoom && 'transitiony'"
+            :class="[isMidZoom && 'zoomTransition', isMidScale && 'scaleTransition']"
             :style="{
                 ...collage.fullMapDimensions.toCSS(),
                 ...fullMapPos.toCSS(),
@@ -37,7 +37,7 @@
                 :width="collage.fullMapDimensions.width"
                 :height="collage.fullMapDimensions.height"
                 style="position: absolute; left: 0; top: 0"
-                id="bigMap"
+                id="maskOverlay"
             >
                 <mask id="islands">
                     <rect
@@ -136,7 +136,7 @@
                     }"
                 />
                 <div
-                    v-if="zoomedInWindow"
+                    v-if="false"
                     id="newWindowDebug"
                     :style="{
                         position: 'absolute',
@@ -252,6 +252,7 @@ export default {
         // that are to be shown is calculated with MapCollage.getBBoxFromViewport.
         zoomedOutWindow: {},
         zoomedInWindow: {},
+        isMidScale: false,
         scaleFactor: 1,
         maxScaleFactor: 1.5,
         minScaleFactor: 0.3
@@ -319,24 +320,26 @@ export default {
     },
     methods: {
         handleWheel(event) {
+            if (this.isMidScale) {
+                return;
+            }
             const oldViewport = new Dimensions(this.windowWidth, this.windowHeight);
             const oldCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos
             );
-            let newFactor = this.scaleFactor + event.deltaY * -0.0005;
+            let newFactor = this.scaleFactor + event.deltaY * -0.001;
             newFactor = clamp(newFactor, this.minScaleFactor, this.maxScaleFactor);
             if (newFactor !== this.scaleFactor) {
-                this.isMidZoom = true;
+                this.isMidScale = true;
                 this.zoomedOutWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
                     oldViewport,
                     0
                 );
-                // const newViewport = new Dimensions(
-                //     this.windowWidth * (1 / (newFactor / this.scaleFactor)),
-                //     this.windowHeight * (1 / (newFactor / this.scaleFactor))
-                // );
+                // TODO: figure out better solution for running getPosCenteredOn and
+                // getBBoxFromViewport with the upcoming pxPerBlock values than this
+                // weird set/reset hack
                 this.collage.resize({
                     mapLevel: 3,
                     edgeLengthPx: this.level3MapSizePx * (newFactor / this.scaleFactor)
@@ -351,15 +354,16 @@ export default {
                     mapLevel: 3,
                     edgeLengthPx: this.level3MapSizePx
                 });
-                requestAnimationFrame(() => {
+                this.$nextTick(() => {
                     requestAnimationFrame(() => {
-                        console.log("scale factor going from", this.scaleFactor, "to", newFactor);
-                        this.scaleFactor = newFactor;
-                        this.collage.resize({
-                            mapLevel: 3,
-                            edgeLengthPx: this.level3MapSizePx
+                        requestAnimationFrame(() => {
+                            this.scaleFactor = newFactor;
+                            this.collage.resize({
+                                mapLevel: 3,
+                                edgeLengthPx: this.level3MapSizePx
+                            });
+                            this.fullMapPos = newFullMapPos;
                         });
-                        this.fullMapPos = newFullMapPos;
                     });
                 });
             }
@@ -526,6 +530,7 @@ export default {
         zoomTransitionEnd(event) {
             if (event.target === event.currentTarget) {
                 this.isMidZoom = false;
+                this.isMidScale = false;
             }
         },
         getLevel3MapOpacity(map) {
@@ -755,7 +760,7 @@ export default {
                 if (this.outliningSubMaps) {
                     return "Click within an outlined area";
                 } else {
-                    return "Zoom In";
+                    return "View Detailed Maps";
                 }
             } else {
                 return "Zoom Out";
@@ -778,6 +783,12 @@ export default {
 @mixin standard-transitions {
     transition-duration: 1s;
     transition-property: width, height, left, top, opacity, visibility;
+}
+
+@mixin scale-transitions {
+    transition-duration: 0.3s;
+    transition-property: width, height, left, top;
+    transition-timing-function: linear;
 }
 
 .fade-enter-active,
@@ -806,13 +817,16 @@ body {
 .mapContainer {
     position: absolute;
 }
-.transitiony {
+.zoomTransition {
     @include standard-transitions;
+}
+.scaleTransition {
+    @include scale-transitions;
 }
 .subMapOutlineOverlay {
     @include standard-transitions;
 }
-#bigMap {
+#maskOverlay {
     @include standard-transitions;
 }
 #cornerDisplay {
@@ -891,5 +905,21 @@ body {
     position: absolute;
     user-select: none;
     @include standard-transitions;
+}
+.scaleTransition .subMap {
+    @include scale-transitions;
+}
+.mapMarker {
+    position: absolute;
+    height: 25px;
+    width: 25px;
+    @include standard-transitions;
+    @media (max-aspect-ratio: 1/1) {
+        height: 18px;
+        width: 18px;
+    }
+}
+.scaleTransition .mapMarker {
+    @include scale-transitions;
 }
 </style>

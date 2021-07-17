@@ -208,21 +208,7 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
-// todo: move to its own file and use it from App.vue also
-@mixin standard-transitions {
-    transition-duration: 1s;
-    transition-property: width, height, left, top, opacity, visibility;
-}
-.mapMarker {
-    position: absolute;
-    height: 25px;
-    width: 25px;
-    @include standard-transitions;
-    @media (max-aspect-ratio: 1/1) {
-        height: 18px;
-        width: 18px;
-    }
-}
+// .mapMarker rules are in App.vue
 .appZoomedIn .mapMarker {
     height: 40px;
     width: 40px;
