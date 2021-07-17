@@ -115,6 +115,7 @@
                 :fullMapPos="fullMapPos"
                 :POI="location"
                 :coverageIndex="captionCoverageIndex"
+                :initiallyActive="location.x == 64 && location.y == 64"
             />
             <!-- displaying caption coverage for debugging -->
             <template v-if="!deployed">

@@ -1,12 +1,20 @@
 <template>
     <div
         class="mapMarker"
-        :class="[displayingCaption ? 'displayingCaption' : '', clicked ? 'stayingOn' : '']"
+        :class="[
+            displayingCaption ? 'displayingCaption' : '',
+            clicked ? 'stayingOn' : '',
+            iconLitUp ? 'litUp' : '',
+        ]"
         :style="position.toCSS()"
-        @mouseover="hovered = true"
+        @mouseover="
+            hovered = true;
+            iconLitUp = true;
+        "
         @mouseout="
             hovered = false;
             fading = true;
+            iconLitUp = false;
         "
         @click="
             clicked = !clicked;
@@ -37,6 +45,7 @@ export default {
         clicked: false,
         hovered: false,
         fading: false,
+        iconLitUp: false,
         markerIcons: {
             normal: "/marker.png",
             village: "/emerald.png",
@@ -63,6 +72,10 @@ export default {
         coverageIndex: {
             type: RBush,
             required: true
+        },
+        initiallyActive: {
+            type: Boolean,
+            required: false
         }
     },
     created() {
@@ -86,6 +99,10 @@ export default {
             this.fading = true;
         };
         this.lastMouseDownFullMapPos = this.fullMapPos;
+        if (this.initiallyActive) {
+            this.clicked = true;
+            this.iconLitUp = true;
+        }
     },
     methods: {
         reset() {
@@ -261,7 +278,7 @@ export default {
 .mapMarker.displayingCaption .caption {
     opacity: 1;
 }
-.mapMarker:hover::after {
+.mapMarker.litUp::after {
     border-radius: 50%;
     opacity: 0.6;
     background-color: #1be91b;
@@ -276,7 +293,7 @@ export default {
     pointer-events: none;
     content: "";
 }
-.mapMarker.stayingOn:hover .caption {
+.mapMarker.stayingOn.litUp .caption {
     text-shadow: #fff 1px 0 10px;
 }
 </style>
