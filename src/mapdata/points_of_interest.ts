@@ -250,6 +250,12 @@ pois[3] = {
   level: 3,
   items: [
     {
+      x: 64,
+      y: 64,
+      text: "World Spawn",
+      type: POIType.Spawn,
+    },
+    {
       x: 89.5,
       y: 96.24,
       text: "cuteville",

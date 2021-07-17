@@ -41,7 +41,8 @@ export default {
             normal: "/marker.png",
             village: "/emerald.png",
             mining: "/pickaxe.png",
-            monsters: "/sword.png"
+            monsters: "/sword.png",
+            spawn: "/door2.png"
         },
         handleNonMarkerClick: null,
         captionPosClass: "topCaption",
