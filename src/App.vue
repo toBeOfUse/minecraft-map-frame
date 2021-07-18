@@ -41,6 +41,7 @@
             >
                 <mask id="islands">
                     <rect
+                        v-if="highlightingMap || outliningSubMaps"
                         :x="collage.lowestMapCoords.x"
                         :y="collage.lowestMapCoords.y"
                         width="100%"
@@ -65,19 +66,16 @@
                     mask="url(#islands)"
                 />
             </svg>
-            <transition name="fade">
-                <img
-                    v-if="currentlyCenteredMap && !outliningSubMaps"
-                    :src="'/maps/' + currentlyCenteredMap.file"
-                    :key="currentlyCenteredMap.file"
-                    :style="{
-                        width: level3MapSizePx + 'px',
-                        height: level3MapSizePx + 'px',
-                        ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
-                    }"
-                    class="subMap"
-                />
-            </transition>
+            <img
+                v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
+                :src="'/maps/' + currentlyCenteredMap.file"
+                :style="{
+                    width: level3MapSizePx + 'px',
+                    height: level3MapSizePx + 'px',
+                    ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
+                }"
+                class="subMap"
+            />
             <img
                 v-for="subMap in currentlyVisibleSubMaps"
                 :key="subMap.file"
@@ -790,6 +788,9 @@ export default {
             } else {
                 return "Zoom Out";
             }
+        },
+        highlightingMap() {
+            return this.scaleFactor > 0.7;
         }
     },
     watch: {
