@@ -10,12 +10,12 @@
             @click="handleMapClick"
             @mousemove="handleMouseMove"
             @touchmove="handleMouseMove"
-            @mousedown="startPanning"
-            @touchstart="startPanning"
-            @mouseup="panning = false"
-            @touchend="panning = false"
-            @touchcancel="panning = false"
-            @mouseleave="panning = false"
+            @mousedown="handlePointerAdd"
+            @touchstart="handlePointerAdd"
+            @mouseup="handlePointerRemove"
+            @touchend="handlePointerRemove"
+            @touchcancel="handlePointerRemove"
+            @mouseleave="handlePointerRemove"
             @transitionend="zoomTransitionEnd"
             @wheel="handleWheel"
         >
@@ -239,6 +239,7 @@ export default {
         panning: false,
         lastPanningX: -1,
         lastPanningY: -1,
+        lastDistBetweenTouches: -1,
         currentIsland: null,
         allowedPOITypes: Object.values(POIType),
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
@@ -338,8 +339,8 @@ export default {
                 this.fullMapPos = newFullMapPos;
             }
         },
-        zoom(direction, map) {
-            if (direction == "in") {
+        levelChange(newLevel, map) {
+            if (newLevel == 0) {
                 const { x, y } = map;
                 console.log("map at this position was clicked", x, y);
                 this.isMidZoom = true;
@@ -369,7 +370,7 @@ export default {
                         );
                     });
                 });
-            } else if (direction == "out") {
+            } else if (newLevel == 3) {
                 this.isMidZoom = true;
                 // this will have to be changed if we add support for multiple level 3
                 // islands
@@ -402,7 +403,7 @@ export default {
                     });
                 });
             } else {
-                console.error(direction, "is not a real direction");
+                console.error(newLevel, "is not a valid new level");
             }
         },
         handleMouseMove(event) {
@@ -416,46 +417,92 @@ export default {
             }
 
             if (this.panning) {
-                if (event.touches && event.touches.length > 1) {
-                    return;
-                }
                 event.preventDefault();
-                const newX = event.type.startsWith("mouse") ? event.pageX : event.touches[0]?.pageX;
-                const newY = event.type.startsWith("mouse") ? event.pageY : event.touches[0]?.pageY;
+                let newX, newY;
+                if (event.type.startsWith("mouse") || event.touches?.length == 1) {
+                    const newPointerX = event.type.startsWith("mouse")
+                        ? event.pageX
+                        : event.touches[0]?.pageX;
+                    newX = this.fullMapPos.left + newPointerX - this.lastPanningX;
+                    const newPointerY = event.type.startsWith("mouse")
+                        ? event.pageY
+                        : event.touches[0]?.pageY;
+                    newY = this.fullMapPos.top + newPointerY - this.lastPanningY;
+                    this.lastPanningX = newPointerX;
+                    this.lastPanningY = newPointerY;
+                } else if (event.touches?.length > 1) {
+                    const x1 = event.touches[0].pageX,
+                        x2 = event.touches[1].pageX;
+                    const y1 = event.touches[0].pageY,
+                        y2 = event.touches[1].pageY;
+                    const newCenterX = (x1 + x2) / 2;
+                    const newCenterY = (y1 + y2) / 2;
+                    const oldCenterMapCoords = this.collage.getCoordsWithinCollageFromViewportPos(
+                        new Position(this.lastPanningX, this.lastPanningY),
+                        this.fullMapPos
+                    );
 
+                    const newDistBetweenTouches = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    this.scaleFactor = clamp(
+                        this.scaleFactor * (newDistBetweenTouches / this.lastDistBetweenTouches),
+                        this.minScaleFactor,
+                        this.maxScaleFactor
+                    );
+                    this.collage.resize({
+                        mapLevel: 3,
+                        edgeLengthPx: this.level3MapSizePx
+                    });
+
+                    const newPosition = this.collage.getPosWithPlacedPoint(oldCenterMapCoords, {
+                        x: newCenterX,
+                        y: newCenterY
+                    });
+
+                    newX = newPosition.left;
+                    newY = newPosition.top;
+
+                    this.lastPanningX = newCenterX;
+                    this.lastPanningY = newCenterY;
+
+                    this.lastDistBetweenTouches = newDistBetweenTouches;
+                }
                 const bounds = this.currentPanningBounds;
 
                 this.fullMapPos = new Position(
-                    clamp(
-                        this.fullMapPos.left + newX - this.lastPanningX,
-                        bounds.lowerXBound,
-                        bounds.upperXBound
-                    ),
-                    clamp(
-                        this.fullMapPos.top + newY - this.lastPanningY,
-                        bounds.lowerYBound,
-                        bounds.upperYBound
-                    )
+                    clamp(newX, bounds.lowerXBound, bounds.upperXBound),
+                    clamp(newY, bounds.lowerYBound, bounds.upperYBound)
                 );
-
-                this.lastPanningX = newX;
-                this.lastPanningY = newY;
             }
         },
-        startPanning(event) {
-            if (event.touches && event.touches.length > 1) {
-                return;
-            }
+        handlePointerAdd(event) {
             if (this.isMidZoom) {
                 return;
             }
             this.panning = true;
-            this.lastPanningX = event.type.startsWith("mouse")
-                ? event.pageX
-                : event.touches[0]?.pageX;
-            this.lastPanningY = event.type.startsWith("mouse")
-                ? event.pageY
-                : event.touches[0]?.pageY;
+            if (event.type.startsWith("mouse") || event.touches?.length == 1) {
+                this.lastPanningX = event.type.startsWith("mouse")
+                    ? event.pageX
+                    : event.touches[0]?.pageX;
+                this.lastPanningY = event.type.startsWith("mouse")
+                    ? event.pageY
+                    : event.touches[0]?.pageY;
+            } else if (event.touches?.length > 1) {
+                const x1 = event.touches[0].pageX,
+                    x2 = event.touches[1].pageX;
+                const y1 = event.touches[0].pageY,
+                    y2 = event.touches[1].pageY;
+                this.lastPanningX = (x1 + x2) / 2;
+                this.lastPanningY = (y1 + y2) / 2;
+                this.lastDistBetweenTouches = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            }
+        },
+        handlePointerRemove(event) {
+            if (event.type.startsWith("mouse") || event.touches?.length === 0) {
+                this.panning = false;
+            } else if (event.touches?.length === 1) {
+                this.lastPanningX = event.touches[0].pageX;
+                this.lastPanningY = event.touches[0].pageY;
+            }
         },
         handleMapClick(event) {
             if (!this.deployed && navigator.clipboard) {
@@ -474,7 +521,7 @@ export default {
                     0
                 );
                 if (clickedMap) {
-                    this.zoom("in", clickedMap);
+                    this.levelChange(0, clickedMap);
                 } else {
                     console.log("area with no submap was clicked");
                 }
@@ -494,7 +541,7 @@ export default {
                     this.fullMapPos,
                     3
                 );
-                this.zoom("out", currentLevel3Map);
+                this.levelChange(3, currentLevel3Map);
             }
         },
         zoomTransitionEnd(event) {
