@@ -321,14 +321,33 @@ export default class MapCollage {
     );
   }
 
-  getPosCenteredOn(pointCoords: Coords, viewport: Dimensions): Position {
-    // returns the pixel values for the left and top css properties that, when given
-    // to the collage container, will center the specified point.
+  /**
+   * returns the pixel values for the left and top css properties that, when given to
+   * the full map, will place the point specified in MapCollage units at the
+   * destination point within the viewport specified in px.
+   * @param pointCoords a point in MapCollage units that is within the map
+   * @param pointDestPx a point in px that is within the viewport
+   */
+  getPosWithPlacedPoint(pointCoords: Coords, pointDestPx: Coords): Position {
     const { x, y } = this.getCoordsRelativeToCollage(pointCoords);
     return new Position(
-      -x * this.pxPerBlock + viewport.width / 2,
-      -y * this.pxPerBlock + viewport.height / 2
+      -x * this.pxPerBlock + pointDestPx.x,
+      -y * this.pxPerBlock + pointDestPx.y
     );
+  }
+
+  /**
+   * returns the pixel values for the left and top css properties that, when given
+   * to the collage container, will center the specified point.
+   * @param pointCoords the x and y of the point that you wish to center within the viewport
+   * @param viewport the dimensions of the viewport in pixels
+   * @returns pixel position that can be converted to CSS and used to place the full map
+   */
+  getPosCenteredOn(pointCoords: Coords, viewport: Dimensions): Position {
+    return this.getPosWithPlacedPoint(pointCoords, {
+      x: viewport.width / 2,
+      y: viewport.height / 2,
+    });
   }
 
   getPosCenteredOnMap(
