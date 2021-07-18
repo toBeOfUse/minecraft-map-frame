@@ -478,7 +478,6 @@ export default {
             }
             this.panning = true;
             if (event.type.startsWith("mouse") || event.touches?.length == 1) {
-                event.preventDefault();
                 this.lastPanningX = event.type.startsWith("mouse")
                     ? event.pageX
                     : event.touches[0]?.pageX;
