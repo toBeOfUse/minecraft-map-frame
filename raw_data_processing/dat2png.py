@@ -189,29 +189,6 @@ for unused_map in sum(unused_maps.values(), []):
         except:
             print("could not delete unused file", path)
 
-print("creating composite map...")
-lowest_x = min(level3Map["x"] for level3Map in processed_maps["level3"])
-lowest_y = min(level3Map["y"] for level3Map in processed_maps["level3"])
-highest_x = max(level3Map["x"] for level3Map in processed_maps["level3"])
-highest_y = max(level3Map["y"] for level3Map in processed_maps["level3"])
-full_map_size = ((highest_x-lowest_x+MAP_SIZE_PX),
-                 (highest_y-lowest_y+MAP_SIZE_PX))
-print("composite map will be", full_map_size[0], "by", full_map_size[1])
-
-full_map_image = Image.new("RGBA", full_map_size, (255, 255, 255, 0))
-for i, level3_map in enumerate(processed_maps["level3"]):
-    level3_map_image = Image.open(level3_map["path"])
-    full_map_image.paste(
-        level3_map_image, (level3_map["x"]-lowest_x, level3_map["y"]-lowest_y))
-    print(f"\rpasted in {i+1}/{len(processed_maps['level3'])}", end="")
-
-full_map_hash = b64(blake2b(full_map_image.tobytes(),
-                    digest_size=12).digest()).decode("utf-8")
-full_map_path = f"../public/maps/full_map_level_3.{full_map_hash}.png"
-full_map_image.save(full_map_path)
-processed_maps["full_map"] = full_map_path.split('/').pop()
-print()
-
 with open("../src/mapdata/processed_maps.json", "w+") as output_record:
     json.dump(processed_maps, output_record)
 print("done")
