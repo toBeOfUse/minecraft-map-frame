@@ -206,6 +206,7 @@
                 {{ getMinecraftCoordinates(currentlyCenteredMap) }}
             </span>
             <a target="_blank" href="travel_brochure_96dpi.pdf">Complimentary Brochure</a>
+            <span v-if="!deployed">{{ debug }}</span>
         </div>
     </div>
 </template>
@@ -254,7 +255,8 @@ export default {
         zoomedInWindow: {},
         scaleFactor: 1,
         maxScaleFactor: 1.5,
-        minScaleFactor: 0.3
+        minScaleFactor: 0.3,
+        debug: ""
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
