@@ -20,7 +20,7 @@
             @wheel="handleWheel"
         >
             <img
-                v-for="map in getCurrentlyVisibleMaps(3)"
+                v-for="map in currentlyVisibleMaps"
                 :key="map.file"
                 :src="`maps/${map.file}`"
                 class="subMap"
@@ -79,7 +79,7 @@
                 />
             </transition>
             <img
-                v-for="subMap in getCurrentlyVisibleMaps(0)"
+                v-for="subMap in currentlyVisibleSubMaps"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
                 class="subMap"
@@ -127,7 +127,7 @@
                 />
                 <div
                     v-if="false"
-                    id="oldWindowDebug"
+                    id="outWindowDebug"
                     :style="{
                         position: 'absolute',
                         backgroundColor: 'orange',
@@ -137,7 +137,7 @@
                 />
                 <div
                     v-if="false"
-                    id="newWindowDebug"
+                    id="inWindowDebug"
                     :style="{
                         position: 'absolute',
                         backgroundColor: 'purple',
@@ -234,6 +234,7 @@ export default {
         zoomLevel: 3, // currently can be only either 0 or 3
         isMidZoom: false,
         fullMapPos: new Position(NaN, NaN), // properly set in "created" hook
+        debouncedFullMapPos: new Position(NaN, NaN),
         outliningSubMaps: false,
         renderingSubMaps: false,
         panning: false,
@@ -480,6 +481,7 @@ export default {
             }
             this.panning = true;
             if (event.type.startsWith("mouse") || event.touches?.length == 1) {
+                event.preventDefault();
                 this.lastPanningX = event.type.startsWith("mouse")
                     ? event.pageX
                     : event.touches[0]?.pageX;
@@ -599,7 +601,7 @@ export default {
                     return allMaps;
                 } else {
                     const openWindow = this.collage.getBBoxFromViewport(
-                        this.fullMapPos,
+                        this.debouncedFullMapPos,
                         new Dimensions(this.windowWidth, this.windowHeight)
                     );
 
@@ -731,9 +733,10 @@ export default {
             let narrowedDownPoints = [];
             if (this.isMidZoom) {
                 let points;
+                // TODO: just union the windows beforehand somehow instead of unioning the set of points
                 points = this.collage.items.searchPOIs(3, this.zoomedOutWindow);
                 points = points.concat(this.collage.items.searchPOIs(3, this.zoomedInWindow));
-                if (this.zoomLevel == 0) {
+                if (this.outliningSubMaps) {
                     points = points.concat(this.collage.items.searchPOIs(0, this.zoomedOutWindow));
                     points = points.concat(this.collage.items.searchPOIs(0, this.zoomedInWindow));
                 }
@@ -746,7 +749,7 @@ export default {
                 }
             } else {
                 const currentWindow = this.collage.getBBoxFromViewport(
-                    this.fullMapPos,
+                    this.debouncedFullMapPos,
                     new Dimensions(this.windowWidth, this.windowHeight)
                 );
                 narrowedDownPoints = this.collage.items.searchPOIs(3, currentWindow);
@@ -771,6 +774,12 @@ export default {
             }
             return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
         },
+        currentlyVisibleMaps() {
+            return this.getCurrentlyVisibleMaps(3);
+        },
+        currentlyVisibleSubMaps() {
+            return this.getCurrentlyVisibleMaps(0);
+        },
         zoomButtonText() {
             if (this.zoomLevel == 3) {
                 if (this.outliningSubMaps) {
@@ -780,6 +789,19 @@ export default {
                 }
             } else {
                 return "Zoom Out";
+            }
+        }
+    },
+    watch: {
+        fullMapPos(newValue) {
+            const debounceLevel = 50;
+            const newDebouncedX = Math.floor(newValue.left / debounceLevel) * debounceLevel;
+            const newDebouncedY = Math.floor(newValue.top / debounceLevel) * debounceLevel;
+            if (
+                newDebouncedX != this.debouncedFullMapPos.left ||
+                newDebouncedY != this.debouncedFullMapPos.top
+            ) {
+                this.debouncedFullMapPos = new Position(newDebouncedX, newDebouncedY);
             }
         }
     },
