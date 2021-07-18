@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser("Convert Minecraft DAT files named things like map_00.dat to PNGs")
 parser.add_argument(
-    "--raw_data_path", '-r', type=str,
+    "--raw_data_path", '-r', type=str, required=True,
     help="path to the Minecraft DAT files you are converting")
 args = parser.parse_args()
 raw_data_path = args.raw_data_path
