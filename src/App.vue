@@ -219,7 +219,6 @@ import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
-import { POIType } from "./Types";
 
 export default {
     name: "App",
@@ -240,7 +239,7 @@ export default {
         lastPanningY: -1,
         lastDistBetweenTouches: -1,
         currentIsland: null,
-        allowedPOITypes: Object.values(POIType),
+        allowedPOITypes: ["normal", "village", "mining", "monsters"],
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
         captionCoverageIndex: new RBush(),
         // whilst zooming in or out, it is necessary to have loaded into the DOM the
@@ -770,7 +769,14 @@ export default {
                     console.log("unsupported point of interest filtering mode:", mode);
                 }
             }
-            return narrowedDownPoints.filter(poi => this.allowedPOITypes.includes(poi.type));
+            const poiTypeGroups = {
+                spawn: "normal"
+            };
+            return narrowedDownPoints.filter(
+                poi =>
+                    this.allowedPOITypes.includes(poi.type) ||
+                    this.allowedPOITypes.includes(poiTypeGroups[poi.type])
+            );
         },
         currentlyVisibleMaps() {
             return this.getCurrentlyVisibleMaps(3);
