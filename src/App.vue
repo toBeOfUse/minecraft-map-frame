@@ -961,13 +961,4 @@ body {
     position: absolute;
     user-select: none;
 }
-.mapMarker {
-    position: absolute;
-    height: 25px;
-    width: 25px;
-    @media (max-aspect-ratio: 1/1) {
-        height: 18px;
-        width: 18px;
-    }
-}
 </style>

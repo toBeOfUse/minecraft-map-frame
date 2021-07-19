@@ -209,10 +209,14 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
-// .mapMarker rules are in App.vue
-.appZoomedIn .mapMarker {
-    height: 40px;
-    width: 40px;
+.mapMarker {
+    position: absolute;
+    height: 25px;
+    width: 25px;
+    @media (max-aspect-ratio: 1/1) {
+        height: 18px;
+        width: 18px;
+    }
 }
 .mapMarker.displayingCaption {
     opacity: 1;
