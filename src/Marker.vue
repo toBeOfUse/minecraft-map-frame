@@ -88,6 +88,7 @@ export default {
         this.handleNonMarkerClick = event => {
             if (!event.targetedMapMarker && this.fullMapPos == this.lastMouseDownFullMapPos) {
                 this.clicked = false;
+                this.iconLitUp = false;
             }
         };
         this.trackMapPos = () => {

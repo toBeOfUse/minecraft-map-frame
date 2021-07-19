@@ -8,8 +8,8 @@
                 ...fullMapPos.toCSS(),
             }"
             @click="handleMapClick"
-            @mousemove="handleMouseMove"
-            @touchmove="handleMouseMove"
+            @mousemove="handlePointerMove"
+            @touchmove="handlePointerMove"
             @mousedown="handlePointerAdd"
             @touchstart="handlePointerAdd"
             @mouseup="handlePointerRemove"
@@ -291,7 +291,7 @@ export default {
                     this.collage.resize({ mapLevel: 3, edgeLengthPx: this.level3MapSizePx });
                     this.fullMapPos = this.collage.getPosCenteredOn(
                         { x, y },
-                        new Dimensions(this.windowWidth, this.windowHeight)
+                        this.viewportDimensions
                     );
                     this.poiTypeFilter = "byIsland";
                 }
@@ -302,7 +302,7 @@ export default {
             this.fullMapPos = this.collage.getPosCenteredOnMap(
                 { x: 0, y: 0 },
                 3,
-                new Dimensions(this.windowWidth, this.windowHeight)
+                this.viewportDimensions
             );
 
             // this will have to be changed if we add support for multiple level 3
@@ -320,7 +320,6 @@ export default {
     },
     methods: {
         handleWheel(event) {
-            const viewport = new Dimensions(this.windowWidth, this.windowHeight);
             const oldCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos
@@ -333,7 +332,10 @@ export default {
                     mapLevel: 3,
                     edgeLengthPx: this.level3MapSizePx
                 });
-                const newFullMapPos = this.collage.getPosCenteredOn(oldCenterPoint, viewport);
+                const newFullMapPos = this.collage.getPosCenteredOn(
+                    oldCenterPoint,
+                    this.viewportDimensions
+                );
                 this.fullMapPos = newFullMapPos;
             }
         },
@@ -349,11 +351,11 @@ export default {
                     { x, y },
                     3,
                     0,
-                    new Dimensions(this.windowWidth, this.windowHeight)
+                    this.viewportDimensions
                 );
                 this.zoomedOutWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
-                    new Dimensions(this.windowWidth, this.windowHeight)
+                    this.viewportDimensions
                 );
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -364,7 +366,7 @@ export default {
                         this.fullMapPos = this.collage.getPosCenteredOnMap(
                             { x, y },
                             0,
-                            new Dimensions(this.windowWidth, this.windowHeight)
+                            this.viewportDimensions
                         );
                     });
                 });
@@ -380,11 +382,11 @@ export default {
                     map,
                     0,
                     3,
-                    new Dimensions(this.windowWidth, this.windowHeight)
+                    this.viewportDimensions
                 );
                 this.zoomedInWindow = this.collage.getBBoxFromViewport(
                     this.fullMapPos,
-                    new Dimensions(this.windowWidth, this.windowHeight)
+                    this.viewportDimensions
                 );
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
@@ -396,7 +398,7 @@ export default {
                         this.fullMapPos = this.collage.getPosCenteredOnMap(
                             map,
                             3,
-                            new Dimensions(this.windowWidth, this.windowHeight)
+                            this.viewportDimensions
                         );
                     });
                 });
@@ -404,7 +406,7 @@ export default {
                 console.error(newLevel, "is not a valid new level");
             }
         },
-        handleMouseMove(event) {
+        handlePointerMove(event) {
             if (!this.deployed) {
                 const eventPos = this.collage.getCoordsWithinCollageFromViewportPos(
                     new Position(event.clientX, event.clientY),
@@ -433,14 +435,21 @@ export default {
                         x2 = event.touches[1].pageX;
                     const y1 = event.touches[0].pageY,
                         y2 = event.touches[1].pageY;
-                    const newCenterX = (x1 + x2) / 2;
-                    const newCenterY = (y1 + y2) / 2;
-                    const oldCenterMapCoords = this.collage.getCoordsWithinCollageFromViewportPos(
+                    const newMiddleX = (x1 + x2) / 2;
+                    const newMiddleY = (y1 + y2) / 2;
+
+                    const oldMiddleMapCoords = this.collage.getCoordsWithinCollageFromViewportPos(
                         new Position(this.lastPanningX, this.lastPanningY),
                         this.fullMapPos
                     );
 
+                    const viewportCenterMapCoords = this.collage.getCoordsWithinCollageFromViewportPos(
+                        new Position(this.windowWidth / 2, this.windowHeight / 2),
+                        this.fullMapPos
+                    );
+
                     const newDistBetweenTouches = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
                     this.scaleFactor = clamp(
                         this.scaleFactor * (newDistBetweenTouches / this.lastDistBetweenTouches),
                         this.minScaleFactor,
@@ -451,16 +460,26 @@ export default {
                         edgeLengthPx: this.level3MapSizePx
                     });
 
-                    const newPosition = this.collage.getPosWithPlacedPoint(oldCenterMapCoords, {
-                        x: newCenterX,
-                        y: newCenterY
+                    // because scaling the map shifts our window into it, and our
+                    // window into the collage is mandated to have a map in the
+                    // active island at its center point, we have to correct for that
+                    // and keep the center point the same before and after scaling to
+                    // keep from going "out of bounds"
+                    this.fullMapPos = this.collage.getPosCenteredOn(
+                        viewportCenterMapCoords,
+                        this.viewportDimensions
+                    );
+
+                    const newPosition = this.collage.getPosWithPlacedPoint(oldMiddleMapCoords, {
+                        x: newMiddleX,
+                        y: newMiddleY
                     });
 
                     newX = newPosition.left;
                     newY = newPosition.top;
 
-                    this.lastPanningX = newCenterX;
-                    this.lastPanningY = newCenterY;
+                    this.lastPanningX = newMiddleX;
+                    this.lastPanningY = newMiddleY;
 
                     this.lastDistBetweenTouches = newDistBetweenTouches;
                 }
@@ -598,7 +617,7 @@ export default {
                 } else {
                     const openWindow = this.collage.getBBoxFromViewport(
                         this.debouncedFullMapPos,
-                        new Dimensions(this.windowWidth, this.windowHeight)
+                        this.viewportDimensions
                     );
 
                     return this.collage.items.searchMaps(level, openWindow);
@@ -610,6 +629,9 @@ export default {
     computed: {
         verticalMode() {
             return this.windowHeight > this.windowWidth;
+        },
+        viewportDimensions() {
+            return new Dimensions(this.windowWidth, this.windowHeight);
         },
         infoBoxDelimiter() {
             if (this.verticalMode) {
@@ -708,7 +730,7 @@ export default {
             // the placement of the map. the + 1s are a hack to keep the user from
             // panning onto the right and top edges of the current island, which are
             // a sort of edge case
-            return {
+            const result = {
                 lowerXBound:
                     this.fullMapPos.left - (screenSpaceUpperBounds.left - centerPoint.left) + 1,
                 upperXBound:
@@ -717,6 +739,8 @@ export default {
                     this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
                 upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top)
             };
+
+            return result;
             // break glass in case of debugging something completely different:
             // return {
             //     lowerXBound: -Infinity,
@@ -746,7 +770,7 @@ export default {
             } else {
                 const currentWindow = this.collage.getBBoxFromViewport(
                     this.debouncedFullMapPos,
-                    new Dimensions(this.windowWidth, this.windowHeight)
+                    this.viewportDimensions
                 );
                 narrowedDownPoints = this.collage.items.searchPOIs(3, currentWindow);
                 if (this.outliningSubMaps) {
@@ -791,7 +815,7 @@ export default {
                     return "Zoom Way In";
                 }
             } else {
-                return "Zoom Out";
+                return "Zoom Way Out";
             }
         },
         highlightingMap() {
