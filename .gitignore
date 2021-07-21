@@ -4,6 +4,7 @@
 
 /build_all_local
 /public/maps/backup/*
+*temp.bin
 
 .DS_Store
 node_modules
