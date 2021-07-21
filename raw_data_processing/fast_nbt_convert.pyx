@@ -1,4 +1,5 @@
-#cython: language_level=3
+# cython: language_level=3
+# cython: profile=True
 import json
 import gzip
 from cpython cimport array
@@ -16,11 +17,10 @@ cdef color_chart_array = array.array("B", flat_color_chart)
 cdef unsigned char[:] color_chart = color_chart_array
 
 def nbt_search(unsigned char[:] nbt_bytes, unsigned char[] key, int key_length, char * value_type):
-    # using .find to scan through the whole bytes object for each separate key seems
-    # bad, but in the files i've seen the keys we want are always close to the
-    # beginning; if this is not always the case, this function could be made a
-    # constructor for a class so that it only scans through and parses the file once
-    # and builds a dict of data that it refers to on search calls
+    # scanning through the whole bytes view for each separate key seems bad, but in
+    # the files i've seen the keys we want are always close to the beginning, and
+    # profiling currently confirms that this function takes very little time in
+    # practice
     cdef int i
     cdef int pos
     for i in range(0, len(nbt_bytes)):
@@ -59,12 +59,11 @@ def convert(str file_path):
                 multiplier = 255
             elif modifier_code == 3:
                 multiplier = 135
-            base_color = color_chart[(initial_code//4)*4:((initial_code//4)*4)+4]
-            rgba_color_data[i] = base_color[0] * multiplier // 255
-            rgba_color_data[i+1] = base_color[1] * multiplier // 255
-            rgba_color_data[i+2] = base_color[2] * multiplier // 255
-            rgba_color_data[i+3] = base_color[3]
-            if base_color[3] == 0:
+            rgba_color_data[i] = color_chart[(initial_code//4)*4] * multiplier // 255
+            rgba_color_data[i+1] = color_chart[(initial_code//4)*4+1] * multiplier // 255
+            rgba_color_data[i+2] = color_chart[(initial_code//4)*4+2] * multiplier // 255
+            rgba_color_data[i+3] = color_chart[(initial_code//4)*4+3]
+            if rgba_color_data[i+3] == 0:
                 blanks_encountered += 1
 
     file_name = file_path.split("/")[-1].split("\\")[-1]
