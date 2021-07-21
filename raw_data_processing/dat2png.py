@@ -86,7 +86,7 @@ def process_all(raw_data_path):
         else:
             print(file.name+" was mostly blank; discarding" + progress_string)
 
-    print("filtering out unused maps and converting the rest to PNGs...")
+    print("filtering out redundant maps and converting the rest to PNGs...")
 
     for scale_level, maps in processed_maps.items():
         # sort the maps so that maps with the same coords are next to each other and
@@ -103,7 +103,9 @@ def process_all(raw_data_path):
             else:
                 i += 1
 
-        for final_map_data in maps:
+        print(f"PNGifying {len(maps)} level {scale_level[-1]} maps:")
+        for i, final_map_data in enumerate(maps, start=1):
+            
             with open(final_map_data["temp_file"], "rb") as temp_image:
                 image_bytes = temp_image.read()
             image_hash = b64(blake2b(image_bytes, digest_size=12).digest()).decode("utf-8")
@@ -117,6 +119,8 @@ def process_all(raw_data_path):
             final_map_data["file"] = map_image_path.split("/")[-1]
             Path(final_map_data["temp_file"]).unlink()
             del final_map_data["temp_file"]
+            print(f"\rsaved {i}/{len(maps)}", end="")
+        print()
 
     processed_maps["unused_maps"] = unused_maps
 
