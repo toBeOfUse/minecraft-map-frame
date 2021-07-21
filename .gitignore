@@ -30,3 +30,5 @@ pnpm-debug.log*
 *.sln
 *.sw?
 src/mapdata/processed_maps.json
+raw_data_processing/profile_results.txt
+raw_data_processing/Profile.prof
