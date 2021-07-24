@@ -31,7 +31,13 @@
             }
         "
     >
-        <img :src="markerIcons[POI.type]" class="markerImage" ref="image" />
+        <img
+            :src="markerIcons[POI.type]"
+            class="markerImage"
+            ref="image"
+            ondragstart="return false;"
+            draggable="false"
+        />
         <span class="caption" :class="captionPosClass" ref="caption">
             {{ POI.text }}
         </span>
@@ -227,6 +233,11 @@ export default {
     width: 100%;
     position: absolute;
     z-index: 99;
+    -webkit-user-drag: none;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
 }
 .caption {
     opacity: 0;
