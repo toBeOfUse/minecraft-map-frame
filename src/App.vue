@@ -320,7 +320,11 @@ export default {
     },
     methods: {
         handleWheel(event) {
-            const oldCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
+            const pointUnderMouse = this.collage.getCoordsWithinCollageFromViewportPos(
+                new Position(event.pageX, event.pageY),
+                this.fullMapPos
+            );
+            const originalCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos
             );
@@ -332,11 +336,24 @@ export default {
                     mapLevel: 3,
                     edgeLengthPx: this.level3MapSizePx
                 });
-                const newFullMapPos = this.collage.getPosCenteredOn(
-                    oldCenterPoint,
+                // we have to scale the map, move the map to keep the center point
+                // the same, obtain the bounds, and then move it as much as the
+                // bounds allow to restore the point under the mouse to the same
+                // point on the map that it used to be
+                const intermediateFullMapPos = this.collage.getPosCenteredOn(
+                    originalCenterPoint,
                     this.viewportDimensions
                 );
-                this.fullMapPos = newFullMapPos;
+                this.fullMapPos = intermediateFullMapPos;
+                const newFullMapPos = this.collage.getPosWithPlacedPoint(pointUnderMouse, {
+                    x: event.pageX,
+                    y: event.pageY
+                });
+                const bounds = this.currentPanningBounds;
+                this.fullMapPos = new Position(
+                    clamp(newFullMapPos.left, bounds.lowerXBound, bounds.upperXBound),
+                    clamp(newFullMapPos.top, bounds.lowerYBound, bounds.upperYBound)
+                );
             }
         },
         levelChange(newLevel, map) {

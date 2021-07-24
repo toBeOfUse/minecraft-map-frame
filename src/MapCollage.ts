@@ -222,10 +222,8 @@ export default class MapCollage {
     };
 
     this.fullMapDimensions = new Dimensions(
-      (this.highestMapCoords.x + getEdgeLength(3) - this.lowestMapCoords.x) *
-        this.pxPerBlock,
-      (this.highestMapCoords.y + getEdgeLength(3) - this.lowestMapCoords.y) *
-        this.pxPerBlock
+      (this.highestMapCoords.x - this.lowestMapCoords.x) * this.pxPerBlock,
+      (this.highestMapCoords.y - this.lowestMapCoords.y) * this.pxPerBlock
     );
 
     const checkedMaps = { "0": new Set(), "3": new Set() };
@@ -296,10 +294,8 @@ export default class MapCollage {
   resize(sizing: ScaleInfo) {
     this.pxPerBlock = sizing.edgeLengthPx / getEdgeLength(sizing.mapLevel);
     this.fullMapDimensions = new Dimensions(
-      (this.highestMapCoords.x + getEdgeLength(3) - this.lowestMapCoords.x) *
-        this.pxPerBlock,
-      (this.highestMapCoords.y + getEdgeLength(3) - this.lowestMapCoords.y) *
-        this.pxPerBlock
+      (this.highestMapCoords.x - this.lowestMapCoords.x) * this.pxPerBlock,
+      (this.highestMapCoords.y - this.lowestMapCoords.y) * this.pxPerBlock
     );
   }
 
