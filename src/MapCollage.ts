@@ -244,10 +244,23 @@ export default class MapCollage {
           }
           isl.addMaps(islandMaps);
         }
-        isl.findEdges();
+        if (level == "0") {
+          isl.findEdges();
+        }
         this.islands[levelInt].items.push(isl);
       }
     }
+
+    console.log(
+      this.islands[3].items.length,
+      "level 3 islands found. connecting..."
+    );
+    let largeIsland = this.islands[3].items[0];
+    for (const level3Island of this.islands[3].items.slice(1)) {
+      largeIsland = largeIsland.connect(level3Island);
+    }
+    largeIsland.findEdges();
+    this.islands[3].items = [largeIsland];
 
     // we want to divide up all of the points of interest into their level 0 islands,
     // if they exist on one. to do this, we will figure out what level 0 map they
@@ -271,7 +284,13 @@ export default class MapCollage {
     const result = new Set<Map>();
     const edgeLength = getEdgeLength(level);
     const search = (map: Map | undefined) => {
-      if (!map) return; // should not happen
+      if (!map) {
+        console.warn(
+          "in buildIsland, 'search' was called with a falsy map:",
+          map
+        );
+        return;
+      } // should not happen
       if (!result.has(map)) {
         result.add(map);
         for (const side of MapCollage.sides) {

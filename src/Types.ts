@@ -165,11 +165,14 @@ class Shape {
   }
 }
 
-// types to be rendered; based on the structure of the objects in the corresponding json files
+// types to be rendered; based on the structure of the objects in the corresponding
+// json files
 interface Map {
   x: number;
   y: number;
-  file: String;
+  // maps with "false" files are used as empty placeholders when creating contiguous
+  // "Islands"
+  file: String | false;
 }
 
 enum POIType {
@@ -247,12 +250,6 @@ function mod(n: number, m: number) {
 function getEdgeLength(level: number): number {
   return 128 * 2 ** level;
 }
-
-// function removeOverlap(rect1: Window, rect2: Window): Window[] {
-//   const exes = [rect1[0], rect1[2], rect2[0], rect2[2]];
-//   const whys = [rect1[1], rect1[3], rect2[1], rect2[3]];
-
-// }
 
 export {
   CSSDimensions,
