@@ -23,6 +23,11 @@ export default class Island {
   level: number;
   private maps: Set<Map> = new Set();
 
+  minX: number = Infinity;
+  minY: number = Infinity;
+  maxX: number = -Infinity;
+  maxY: number = -Infinity;
+
   id: number;
 
   // Islands should be understood as having references to points of interest, not as
@@ -62,8 +67,6 @@ export default class Island {
     corners: [number, number];
   }[];
 
-  // it is sad that this is essentially a duplicate of the getEdgeLength method in
-  // MapCollage
   get edgeLength() {
     return getEdgeLength(this.level);
   }
@@ -104,6 +107,28 @@ export default class Island {
   }
 
   addMap(map: Map): void {
+    if (this.minX > map.x) {
+      this.minX = map.x;
+    }
+    if (this.minY > map.y) {
+      this.minY = map.y;
+    }
+    if (this.maxX < map.x + this.edgeLength) {
+      this.maxX = map.x + this.edgeLength;
+    }
+    if (this.maxY < map.y + this.edgeLength) {
+      this.maxY = map.y + this.edgeLength;
+    }
+    if (this.localMapIndex.has(Island.coordsToID(map))) {
+      if (map.file === false) {
+        return; // placeholder blank maps should not overwrite "real" ones
+      } else {
+        console.warn(
+          "warning: double-adding map to island; god knows what happens now",
+          map
+        );
+      }
+    }
     this.maps.add(map);
     this.localMapIndex.add(Island.coordsToID(map));
     Island.globalMapIndex[Island.globalCoordsToID(this.level, map)] = this;
@@ -120,6 +145,105 @@ export default class Island {
     // belongs on this island
     poi.isPartOfIsland(this);
     this.pointsOfInterest.push(poi);
+  }
+
+  connect(otherIsland: Island): Island {
+    if (this.level !== otherIsland.level) {
+      throw "trying to connect two islands with different zoom levels";
+    }
+    if (this.maps.size == 0 || otherIsland.maps.size == 0) {
+      throw "trying to connect two islands where one has no maps";
+    }
+    if (this.islandShape || otherIsland.islandShape) {
+      console.warn(
+        "connecting two islands when one already has had its edges found; note that the result will Not have defined edges"
+      );
+    }
+    const combo = new Island(this.level);
+    combo.addMaps(this.maps);
+    combo.addMaps(otherIsland.maps);
+
+    // if the two islands are already touching, then no further action is necessary.
+
+    const mapsToCheck =
+      this.maps.size < otherIsland.maps.size ? this.maps : otherIsland.maps;
+    const checkingAgainst =
+      this.maps.size < otherIsland.maps.size
+        ? otherIsland.localMapIndex
+        : this.localMapIndex;
+    for (const map of mapsToCheck) {
+      if (checkingAgainst.has(Island.coordsToID(map))) {
+        return combo;
+      }
+      // checking the bottom, then the right, then the top, then the left (arbitrary
+      // order)
+      const offsets = [
+        [0, 1],
+        [1, 0],
+        [0, -1],
+        [-1, 0],
+      ];
+      for (const offset of offsets) {
+        if (
+          checkingAgainst.has(
+            Island.coordsToID({ x: map.x + offset[0], y: map.y + offset[1] })
+          )
+        ) {
+          return combo;
+        }
+      }
+    }
+
+    // create a "path" of empty maps connecting the two islands. it will emerge from
+    // the center of the bounding box of "our" island, move right or left as
+    // necessary, and then move up or down as necessary, in order to reach the center
+    // of the bounding box of "their" island
+
+    const ourXCenter = (this.minX + this.maxX) / 2;
+    const ourYCenter = (this.minY + this.maxY) / 2;
+    const ourCenterMapX =
+      Math.floor(ourXCenter / this.edgeLength) * this.edgeLength;
+    const ourCenterMapY =
+      Math.floor(ourYCenter / this.edgeLength) * this.edgeLength;
+
+    console.assert(
+      this.localMapIndex.has(
+        Island.coordsToID({ x: ourCenterMapX, y: ourCenterMapY })
+      )
+    );
+
+    const theirXCenter = (otherIsland.minX + otherIsland.maxX) / 2;
+    const theirYCenter = (otherIsland.minY + otherIsland.maxY) / 2;
+    const theirCenterMapX =
+      Math.floor(theirXCenter / otherIsland.edgeLength) *
+      otherIsland.edgeLength;
+    const theirCenterMapY =
+      Math.floor(theirYCenter / otherIsland.edgeLength) *
+      otherIsland.edgeLength;
+
+    console.assert(
+      otherIsland.localMapIndex.has(
+        Island.coordsToID({ x: theirCenterMapX, y: theirCenterMapY })
+      )
+    );
+
+    let penPositionX = ourCenterMapX;
+    let penPositionY = ourCenterMapY;
+    while (penPositionX < theirCenterMapX) {
+      // blank maps that would "cover up" existing maps will automatically be ignored
+      // by addMap
+      combo.addMap({ x: penPositionX, y: penPositionY, file: false });
+      penPositionX += this.edgeLength;
+    }
+    penPositionY += this.edgeLength;
+    while (penPositionY < theirCenterMapY) {
+      // blank maps that would "cover up" existing maps will automatically be ignored
+      // by addMap
+      combo.addMap({ x: penPositionX, y: penPositionY, file: false });
+      penPositionY += this.edgeLength;
+    }
+
+    return combo;
   }
 
   findEdges(): void {
