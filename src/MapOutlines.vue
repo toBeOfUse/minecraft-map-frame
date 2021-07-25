@@ -48,7 +48,7 @@ const comp = Vue.extend({
         // save/index the results of calling getPosWithinCollage with all the
         // available corners; then use that data during getSubMapBorders. this is in
         // accordance with the above
-        for (const island of this.collage.islands[0].items) {
+        for (const island of this.collage.islands[this.zoomLevel].items) {
             for (const corner of island.corners) {
                 const cornerCoords = this.collage.getPosWithinCollage(corner).asCoords();
                 // adjust for the fact that the outline overlay svg extends
@@ -71,7 +71,7 @@ const comp = Vue.extend({
         getSubMapBorders() {
             let cornerCount = 0;
             const lines = [];
-            for (const island of this.collage.islands[0].items) {
+            for (const island of this.collage.islands[this.zoomLevel].items) {
                 for (let i = 0; i < island.corners.length; i++) {
                     const cornerFrom = island.corners[i];
                     const cornerTo = island.corners[(i + 1) % island.corners.length];
