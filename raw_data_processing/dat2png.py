@@ -112,10 +112,11 @@ def process_all(raw_data_path):
             map_image_path = f"../public/maps/{scale_level}"
             map_image_path += f"_{final_map_data['x']},{final_map_data['y']}"
             map_image_path += f"_{final_map_data['id']}.{image_hash}.png"
-            map_image = Image.frombytes("RGBA", (128, 128), image_bytes)
-            map_image = map_image.resize(
-                (MAP_SIZE_PX, MAP_SIZE_PX), resample=Image.NEAREST)
-            map_image.save(map_image_path, optimize=True)
+            if not Path(map_image_path).exists():
+                map_image = Image.frombytes("RGBA", (128, 128), image_bytes)
+                map_image = map_image.resize(
+                    (MAP_SIZE_PX, MAP_SIZE_PX), resample=Image.NEAREST)
+                map_image.save(map_image_path, optimize=True)
             final_map_data["file"] = map_image_path.split("/")[-1]
             Path(final_map_data["temp_file"]).unlink()
             del final_map_data["temp_file"]
