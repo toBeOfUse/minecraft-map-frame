@@ -30,7 +30,11 @@
                     height: level3MapSizePx + 'px',
                 }"
             />
-            <MapOverlay :islands="collage.islands" :outliningSubMaps="outliningSubMaps" />
+            <MapOverlay
+                :islands="collage.islands"
+                :outliningSubMaps="outliningSubMaps"
+                :fadingOutBGMaps="outliningSubMaps || highlightingMap"
+            />
             <img
                 v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
                 :src="'/maps/' + currentlyCenteredMap.file"
