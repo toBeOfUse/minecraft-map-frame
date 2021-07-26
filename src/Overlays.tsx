@@ -1,7 +1,7 @@
 import Island from "./Island";
 import Vue, { PropType, VNode } from "vue";
 import * as tsx from 'vue-tsx-support'
-import { ItemsInLevel } from "./Types";
+import { ItemsInLevel, Coords, CornerType, Corner } from "./Types";
 
 const IslandMask = tsx.component({
     name: "IslandMask",
@@ -35,6 +35,69 @@ const IslandMask = tsx.component({
     },
 });
 
+const IslandOutline = tsx.component({
+    name: "IslandOutline",
+    functional: true,
+    props: {
+        island: {
+            type: Island,
+            required: true
+        },
+        outlineColor: {
+            type: String,
+            required: false,
+            default: "black"
+        },
+        outlineWidth: {
+            type: Number,
+            default: 3
+        }
+    },
+    render(createElement, context) {
+        const corners = context.props.island.corners;
+        const w = context.props.outlineWidth;
+        const polys: VNode[] = [];
+        for (let i = 0; i < corners.length; i++) {
+            const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
+            const cornerTo = corners[i];
+            const edgeAxis = cornerFrom.x == cornerTo.x ? 'y' : 'x';
+            const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -w : w;
+            const points: Coords[] = [cornerFrom, cornerTo];
+            // to get the second two points, move the first ones "out" (along the
+            // normal of the edge). then, if the angle is concave, move the second point
+            // "back"; if it's convex, move the second point "forward;" and do the
+            // opposite for the first point.
+            const outAxis = edgeAxis == 'x' ? 'y' : 'x';
+            let outDirection;
+            if (edgeAxis == 'x' && edgeDirection == w) {
+                outDirection = -w;
+            } else if (edgeAxis == 'y' && edgeDirection == w) {
+                outDirection = w;
+            } else if (edgeAxis == 'x' && edgeDirection == -w) {
+                outDirection = w;
+            } else if (edgeAxis == 'y' && edgeDirection == -w) {
+                outDirection = -w;
+            }
+            const outOffset = { [outAxis]: outDirection, [edgeAxis]: 0 };
+            const point3 = { x: cornerTo.x + Number(outOffset.x), y: cornerTo.y + Number(outOffset.y) };
+            const point4 = { x: cornerFrom.x + Number(outOffset.x), y: cornerFrom.y + Number(outOffset.y) };
+            if (cornerTo.angle == CornerType.Convex) {
+                point3[edgeAxis] += edgeDirection;
+            }
+            if (cornerFrom.angle == CornerType.Convex) {
+                point4[edgeAxis] += -edgeDirection
+            }
+            points.push(point3);
+            points.push(point4);
+            polys.push(<polygon
+                fill={context.props.outlineColor}
+                points={points.map(p => p.x + ',' + p.y).join(' ')}
+            />);
+        }
+        return polys;
+    }
+});
+
 const MapOverlay = tsx.component({
     name: "MapOverlay",
     functional: true,
@@ -62,6 +125,7 @@ const MapOverlay = tsx.component({
                 {mask}
             </mask>
             <IslandMask island={level3Island} fill="#ffffff44" mask={p.outliningSubMaps ? 'url(#level0Islands)' : ''} />
+            {p.outliningSubMaps ? p.islands[0].items.map(i => <IslandOutline island={i} />) : null}
         </svg>;
     }
 })
