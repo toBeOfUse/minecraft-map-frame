@@ -12,5 +12,5 @@ module.exports = {
                 args[0].title = 'everything the light touches'
                 return args
             })
-    }
+    },
 }
