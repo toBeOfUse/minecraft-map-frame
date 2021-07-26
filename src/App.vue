@@ -19,6 +19,7 @@
             @transitionend="zoomTransitionEnd"
             @wheel="handleWheel"
         >
+            <MapUnderlay :islands="collage.islands" />
             <img
                 v-for="map in currentlyVisibleMaps"
                 :key="map.file"
@@ -141,11 +142,11 @@ import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
-import MapOverlay from "./Overlays.tsx";
+import { MapOverlay, MapUnderlay } from "./Overlays";
 
 export default {
     name: "App",
-    components: { MapMarker, MapOverlay },
+    components: { MapMarker, MapOverlay, MapUnderlay },
     data: () => ({
         collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",

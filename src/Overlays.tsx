@@ -104,6 +104,54 @@ const IslandOutline = tsx.component({
     }
 });
 
+const SVGContainer = tsx.component({
+    name: "SVGContainer",
+    functional: true,
+    props: {
+        islands: {
+            type: Array as () => ItemsInLevel<Island>[],
+            required: true
+        }
+    },
+    render(createElement, context) {
+        const level3Island = context.props.islands[3].items[0];
+        return (
+            <svg
+                id="overlay"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox={
+                    `${level3Island.minX} ${level3Island.minY} ` +
+                    `${level3Island.maxX - level3Island.minX} ${level3Island.maxY -
+                        level3Island.minY}`
+                }
+                width="100%"
+                height="100%"
+                style="position: absolute; left: 0; top: 0"
+            >
+                {context.children}
+            </svg>
+        );
+    }
+});
+
+const MapUnderlay = tsx.component({
+    name: "MapUnderlay",
+    functional: true,
+    props: {
+        islands: {
+            type: Array as () => ItemsInLevel<Island>[],
+            required: true
+        }
+    },
+    render(createElement, context) {
+        return (
+            <SVGContainer islands={context.props.islands}>
+                <IslandMask island={context.props.islands[3].items[0]} fill="#D6BF97" />
+            </SVGContainer>
+        );
+    }
+});
+
 const MapOverlay = tsx.component({
     name: "MapOverlay",
     functional: true,
@@ -123,18 +171,7 @@ const MapOverlay = tsx.component({
             mask.push(<IslandMask fill="black" island={island} />);
         }
         return (
-            <svg
-                id="overlay"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox={
-                    `${level3Island.minX} ${level3Island.minY} ` +
-                    `${level3Island.maxX - level3Island.minX} ${level3Island.maxY -
-                        level3Island.minY}`
-                }
-                width="100%"
-                height="100%"
-                style="position: absolute; left: 0; top: 0"
-            >
+            <SVGContainer islands={p.islands}>
                 <mask id="level0Islands">{mask}</mask>
                 {p.fadingOutBGMaps ? (
                     <IslandMask
@@ -146,9 +183,9 @@ const MapOverlay = tsx.component({
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
-            </svg>
+            </SVGContainer>
         );
     }
 });
 
-export default MapOverlay;
+export { MapOverlay, MapUnderlay };
