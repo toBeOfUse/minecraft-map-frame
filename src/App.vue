@@ -30,42 +30,7 @@
                     height: level3MapSizePx + 'px',
                 }"
             />
-            <svg
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="none"
-                :viewBox="mapViewBox"
-                :width="collage.fullMapDimensions.width"
-                :height="collage.fullMapDimensions.height"
-                style="position: absolute; left: 0; top: 0"
-                id="maskOverlay"
-            >
-                <mask id="islands">
-                    <rect
-                        v-if="highlightingMap || outliningSubMaps"
-                        :x="collage.lowestMapCoords.x"
-                        :y="collage.lowestMapCoords.y"
-                        width="100%"
-                        height="100%"
-                        fill="#555"
-                    />
-                    <template v-if="outliningSubMaps">
-                        <polygon
-                            v-for="(island, i) in collage.islands[0].items"
-                            :key="i"
-                            fill="black"
-                            :points="island.corners.map((c) => c.x + ',' + c.y).join(' ')"
-                        />
-                    </template>
-                </mask>
-                <rect
-                    :x="collage.lowestMapCoords.x"
-                    :y="collage.lowestMapCoords.y"
-                    width="100%"
-                    height="100%"
-                    fill="#ffffff"
-                    mask="url(#islands)"
-                />
-            </svg>
+            <MapOverlay :islands="collage.islands" :outliningSubMaps="outliningSubMaps" />
             <img
                 v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
                 :src="'/maps/' + currentlyCenteredMap.file"
@@ -89,16 +54,6 @@
                     opacity: zoomLevel == 0 ? 1 : 0,
                 }"
             />
-            <MapOutlines
-                :zoomLevel="0"
-                :borderWidth="subMapBorderWidth"
-                :collage="collage"
-                :style="{
-                    visiblity: outliningSubMaps ? '' : 'hidden',
-                    opacity: outliningSubMaps ? 1 : 0,
-                    ...getOutlinePos(),
-                }"
-            />
             <MapMarker
                 v-for="location in currentPointsOfInterest"
                 :key="location.x + ',' + location.y"
@@ -108,42 +63,6 @@
                 :coverageIndex="captionCoverageIndex"
                 :initiallyActive="location.x == 64 && location.y == 64"
             />
-            <!-- displaying caption coverage for debugging -->
-            <template v-if="!deployed">
-                <div
-                    v-for="(rect, i) in captionCoverageIndex.all()"
-                    :key="i"
-                    :style="{
-                        backgroundColor: 'red',
-                        opacity: 0.3,
-                        position: 'absolute',
-                        left: rect.minX + 'px',
-                        top: rect.minY + 'px',
-                        height: rect.maxY - rect.minY + 'px',
-                        width: rect.maxX - rect.minX + 'px',
-                    }"
-                />
-                <div
-                    v-if="false"
-                    id="outWindowDebug"
-                    :style="{
-                        position: 'absolute',
-                        backgroundColor: 'orange',
-                        opacity: 0.2,
-                        ...collage.BBoxToCSS(zoomedOutWindow),
-                    }"
-                />
-                <div
-                    v-if="false"
-                    id="inWindowDebug"
-                    :style="{
-                        position: 'absolute',
-                        backgroundColor: 'purple',
-                        opacity: 0.2,
-                        ...collage.BBoxToCSS(zoomedInWindow),
-                    }"
-                />
-            </template>
         </div>
         <div id="cornerModal">
             <span
@@ -214,15 +133,15 @@ import { vueWindowSizeMixin } from "vue-window-size";
 import RBush from "rbush";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
-import MapOutlines from "./MapOutlines.vue";
 import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
+import MapOverlay from "./Overlays.tsx";
 
 export default {
     name: "App",
-    components: { MapOutlines, MapMarker },
+    components: { MapMarker, MapOverlay },
     data: () => ({
         collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",
@@ -702,6 +621,14 @@ export default {
             return result;
         },
         currentPanningBounds() {
+            // break glass in case of debugging something completely different:
+            // return {
+            //     lowerXBound: -Infinity,
+            //     upperXBound: Infinity,
+            //     lowerYBound: -Infinity,
+            //     upperYBound: Infinity
+            // };
+
             // translate the point at the center of the viewport into the map collage's
             // coordinate system
             const centerPoint = new Position(this.windowWidth / 2, this.windowHeight / 2);
@@ -758,13 +685,6 @@ export default {
             };
 
             return result;
-            // break glass in case of debugging something completely different:
-            // return {
-            //     lowerXBound: -Infinity,
-            //     upperXBound: Infinity,
-            //     lowerYBound: -Infinity,
-            //     upperYBound: Infinity
-            // };
         },
         currentPointsOfInterest() {
             let narrowedDownPoints = [];
@@ -977,5 +897,6 @@ body {
 .subMap {
     position: absolute;
     user-select: none;
+    pointer-events: none;
 }
 </style>
