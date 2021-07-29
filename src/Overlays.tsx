@@ -1,7 +1,7 @@
 import Island from "./Island";
 import Vue, { PropType, VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, CornerType, Corner } from "./Types";
+import { ItemsInLevel, Coords, CornerType, getEdgeLength, Corner } from "./Types";
 
 const IslandMask = tsx.component({
     name: "IslandMask",
@@ -19,14 +19,34 @@ const IslandMask = tsx.component({
             type: String,
             required: false,
             default: ""
+        },
+        margin: {
+            type: Number,
+            required: false,
+            default: 0
         }
     },
     render: (createElement, context) => {
         const h = createElement;
+        const i = context.props.island;
+        const m = context.props.margin;
+        const referencePoint = {
+            x: (i.minX + i.minY) / 2,
+            y: (i.minY + i.maxY) / 2
+        };
+        const adjustCoord = (coord: number, reference: number) =>
+            coord < reference ? coord - m : coord + m;
+        const adjustCorner = (corner: Corner): Coords => ({
+            x: adjustCoord(corner.x, referencePoint.x),
+            y: adjustCoord(corner.y, referencePoint.y)
+        });
         return (
             <polygon
                 fill={context.props.fill}
-                points={context.props.island.corners.map(c => c.x + "," + c.y).join(" ")}
+                points={i.corners
+                    .map(c => adjustCorner(c))
+                    .map(c => c.x + "," + c.y)
+                    .join(" ")}
                 mask={context.props.mask}
             />
         );
@@ -104,6 +124,91 @@ const IslandOutline = tsx.component({
     }
 });
 
+const IslandBorder = tsx.component({
+    name: "IslandBorder",
+    functional: true,
+    props: {
+        island: {
+            type: Island,
+            required: true
+        },
+        top: {
+            type: String,
+            required: true
+        },
+        bottom: {
+            type: String,
+            required: true
+        },
+        left: {
+            type: String,
+            required: true
+        },
+        right: {
+            type: String,
+            required: true
+        }
+    },
+    render(createElement, context) {
+        const corners = context.props.island.corners;
+        const border: VNode[] = [];
+        for (let i = 0; i < corners.length; i++) {
+            const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
+            const cornerTo = corners[i];
+            const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
+            const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
+            const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
+            const imageBoxDimensions = { attrs: { width: edgeWidth, height: edgeWidth } };
+            if (edgeAxis == "x") {
+                if (edgeDirection == 1) {
+                    border.push(
+                        <image
+                            href="borders/top.png"
+                            x={cornerFrom.x}
+                            y={cornerFrom.y - edgeWidth}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMax"
+                        />
+                    );
+                } else {
+                    border.push(
+                        <image
+                            href="borders/bottom.png"
+                            x={cornerTo.x}
+                            y={cornerFrom.y}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMin"
+                        />
+                    );
+                }
+            } else {
+                if (edgeDirection == 1) {
+                    border.push(
+                        <image
+                            href="borders/right.png"
+                            x={cornerFrom.x}
+                            y={cornerFrom.y}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMin"
+                        />
+                    );
+                } else {
+                    border.push(
+                        <image
+                            href="borders/left.png"
+                            x={cornerFrom.x - edgeWidth}
+                            y={cornerTo.y}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMaxYMin"
+                        />
+                    );
+                }
+            }
+        }
+        return border;
+    }
+});
+
 const SVGContainer = tsx.component({
     name: "SVGContainer",
     functional: true,
@@ -126,7 +231,7 @@ const SVGContainer = tsx.component({
                 }
                 width="100%"
                 height="100%"
-                style="position: absolute; left: 0; top: 0"
+                style="position: absolute; left: 0; top: 0; overflow: visible"
             >
                 {context.children}
             </svg>
@@ -146,7 +251,7 @@ const MapUnderlay = tsx.component({
     render(createElement, context) {
         return (
             <SVGContainer islands={context.props.islands}>
-                <IslandMask island={context.props.islands[3].items[0]} fill="#D6BF97" />
+                <IslandMask island={context.props.islands[3].items[0]} fill="#D6BF97" margin={10} />
             </SVGContainer>
         );
     }
@@ -183,6 +288,13 @@ const MapOverlay = tsx.component({
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
+                <IslandBorder
+                    island={p.islands[3].items[0]}
+                    top="borders/top.png"
+                    bottom="borders/bottom.png"
+                    left="borders/left.png"
+                    right="borders/right.png"
+                />
             </SVGContainer>
         );
     }

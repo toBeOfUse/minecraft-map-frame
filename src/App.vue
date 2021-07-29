@@ -178,7 +178,7 @@ export default {
         zoomedInWindow: {},
         scaleFactor: 1,
         maxScaleFactor: 1.5,
-        minScaleFactor: 0.3,
+        minScaleFactor: 0.1,
         debug: ""
     }),
     created() {
