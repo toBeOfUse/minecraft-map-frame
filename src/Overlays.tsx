@@ -3,6 +3,8 @@ import Vue, { PropType, VNode } from "vue";
 import * as tsx from "vue-tsx-support";
 import { ItemsInLevel, Coords, CornerType, getEdgeLength, Corner } from "./Types";
 
+const MAP_BG = "#D6BF97";
+
 const IslandMask = tsx.component({
     name: "IslandMask",
     functional: true,
@@ -161,31 +163,85 @@ const IslandBorder = tsx.component({
             const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
             const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
             const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
-            // we are overlapping these svgs images very slightly to avoid the
-            // hairline cracks that appear between them in many browsers and svg
-            // viewers
-            const imageBoxDimensions = { attrs: { width: edgeWidth + 2, height: edgeWidth + 2 } };
+            // we are overlapping these svg images very slightly, by widening them, to
+            // avoid the hairline cracks that appear between them in many browsers
+            // and svg viewers :(
+            const adjustedWidth = edgeWidth / 2 + 2;
+            const cornerWidth = adjustedWidth / 6;
+            const imageBoxDimensions = { attrs: { width: adjustedWidth, height: adjustedWidth } };
+            const cornerBoxDimensions = {
+                attrs: { width: cornerWidth + 1, height: cornerWidth + 1 }
+            };
             if (edgeAxis == "x") {
                 if (edgeDirection == 1) {
                     border.push(
                         <image
                             href="borders/top.png"
-                            x={cornerFrom.x - 1}
-                            y={cornerFrom.y - edgeWidth}
+                            x={cornerFrom.x}
+                            y={cornerFrom.y - adjustedWidth}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMax"
                         />
                     );
+                    border.push(
+                        <image
+                            href="borders/top.png"
+                            x={cornerFrom.x + adjustedWidth - 1}
+                            y={cornerFrom.y - adjustedWidth}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMax"
+                        />
+                    );
+                    if (cornerFrom.angle == CornerType.Convex) {
+                        border.push(
+                            <image
+                                href="borders/topleft.png"
+                                x={cornerFrom.x - cornerWidth}
+                                y={cornerFrom.y - cornerWidth}
+                                {...cornerBoxDimensions}
+                                preserveAspectRatio="xMaxYMax"
+                            />
+                        );
+                    } else if (cornerFrom.angle == CornerType.Concave) {
+                        border.push(
+                            <rect
+                                x={cornerFrom.x}
+                                y={cornerFrom.y - cornerWidth}
+                                {...cornerBoxDimensions}
+                                fill={MAP_BG}
+                            />
+                        );
+                    }
                 } else {
                     border.push(
                         <image
                             href="borders/bottom.png"
-                            x={cornerTo.x - 1}
+                            x={cornerTo.x}
                             y={cornerFrom.y}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMin"
                         />
                     );
+                    border.push(
+                        <image
+                            href="borders/bottom.png"
+                            x={cornerTo.x + adjustedWidth - 1}
+                            y={cornerFrom.y}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMin"
+                        />
+                    );
+                    if (cornerFrom.angle == CornerType.Convex) {
+                        border.push(
+                            <image
+                                href="borders/bottomright.png"
+                                x={cornerFrom.x}
+                                y={cornerFrom.y}
+                                {...cornerBoxDimensions}
+                                preserveAspectRatio="xMinYMin"
+                            />
+                        );
+                    }
                 }
             } else {
                 if (edgeDirection == 1) {
@@ -193,21 +249,70 @@ const IslandBorder = tsx.component({
                         <image
                             href="borders/right.png"
                             x={cornerFrom.x}
-                            y={cornerFrom.y - 1}
+                            y={cornerFrom.y}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMin"
                         />
                     );
+                    border.push(
+                        <image
+                            href="borders/right.png"
+                            x={cornerFrom.x}
+                            y={cornerFrom.y + adjustedWidth - 1}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMinYMin"
+                        />
+                    );
+                    if (cornerFrom.angle == CornerType.Convex) {
+                        border.push(
+                            <image
+                                href="borders/topright.png"
+                                x={cornerFrom.x}
+                                y={cornerFrom.y - cornerWidth}
+                                {...cornerBoxDimensions}
+                                preserveAspectRatio="xMinYMax"
+                            />
+                        );
+                    }
                 } else {
                     border.push(
                         <image
                             href="borders/left.png"
-                            x={cornerFrom.x - edgeWidth}
-                            y={cornerTo.y - 1}
+                            x={cornerFrom.x - adjustedWidth}
+                            y={cornerTo.y}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMaxYMin"
                         />
                     );
+                    border.push(
+                        <image
+                            href="borders/left.png"
+                            x={cornerFrom.x - adjustedWidth}
+                            y={cornerTo.y + adjustedWidth - 1}
+                            {...imageBoxDimensions}
+                            preserveAspectRatio="xMaxYMin"
+                        />
+                    );
+                    if (cornerFrom.angle == CornerType.Convex) {
+                        border.push(
+                            <image
+                                href="borders/bottomleft.png"
+                                x={cornerFrom.x - cornerWidth}
+                                y={cornerFrom.y}
+                                {...cornerBoxDimensions}
+                                preserveAspectRatio="xMaxYMax"
+                            />
+                        );
+                    } else if (cornerFrom.angle == CornerType.Concave) {
+                        border.push(
+                            <rect
+                                fill={MAP_BG}
+                                x={cornerFrom.x - cornerWidth}
+                                y={cornerFrom.y - cornerWidth}
+                                {...cornerBoxDimensions}
+                            />
+                        );
+                    }
                 }
             }
         }
@@ -260,9 +365,17 @@ const MapUnderlay = tsx.component({
         }
     },
     render(createElement, context) {
+        const p = context.props;
         return (
-            <SVGContainer islands={context.props.islands} id="underlay">
-                <IslandMask island={context.props.islands[3].items[0]} fill="#D6BF97" margin={10} />
+            <SVGContainer islands={p.islands} id="underlay">
+                <IslandBorder
+                    island={p.islands[3].items[0]}
+                    top="borders/top.png"
+                    bottom="borders/bottom.png"
+                    left="borders/left.png"
+                    right="borders/right.png"
+                />
+                <IslandMask island={p.islands[3].items[0]} fill={MAP_BG} margin={10} />
             </SVGContainer>
         );
     }
@@ -299,13 +412,6 @@ const MapOverlay = tsx.component({
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
-                <IslandBorder
-                    island={p.islands[3].items[0]}
-                    top="borders/top.png"
-                    bottom="borders/bottom.png"
-                    left="borders/left.png"
-                    right="borders/right.png"
-                />
             </SVGContainer>
         );
     }
