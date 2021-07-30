@@ -78,7 +78,7 @@
                     id="zoomButton"
                 />{{ zoomButtonText }}</span
             >
-            <div class="poiCheckboxes">
+            <div class="poiCheckboxes" @click="poiTypesOnAutopilot = false">
                 <div class="poiCheckboxGroup">
                     <span>
                         <input
@@ -167,8 +167,9 @@ export default {
         lastPanningY: -1,
         lastDistBetweenTouches: -1,
         currentIsland: null,
-        allowedPOITypes: ["biome"], //["normal", "village", "mining", "monsters"],
-        poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
+        allowedPOITypes: ["normal", "village", "mining", "monsters", "biome"],
+        poiTypesOnAutopilot: true,
+        poiFilter: "byProximity", // or "byIsland" or "allIslands"
         captionCoverageIndex: new RBush(),
         // whilst zooming in or out, it is necessary to have loaded into the DOM the
         // maps and POIs that are visible both before and after the change in zoom
@@ -180,7 +181,7 @@ export default {
         // that are to be shown is calculated with MapCollage.getBBoxFromViewport.
         zoomedOutWindow: {},
         zoomedInWindow: {},
-        scaleFactor: 0.2,
+        scaleFactor: 1,
         maxScaleFactor: 1.5,
         minScaleFactor: 0.1,
         debug: ""
@@ -221,7 +222,7 @@ export default {
                         { x, y },
                         this.viewportDimensions
                     );
-                    this.poiTypeFilter = "byIsland";
+                    this.poiFilter = "byIsland";
                 }
                 successfullyLoadedNonDefaultStartingPoint = true;
             }
@@ -290,7 +291,7 @@ export default {
                 console.log("map at this position was clicked", x, y);
                 this.isMidZoom = true;
                 this.currentIsland = Island.getIslandContainingMap(0, { x, y });
-                this.poiTypeFilter = "byIsland";
+                this.poiFilter = "byIsland";
                 this.renderingSubMaps = true;
                 this.zoomedInWindow = this.collage.getBBoxCenteredOnMap(
                     { x, y },
@@ -320,7 +321,7 @@ export default {
                 // this will have to be changed if we add support for multiple level 3
                 // islands
                 this.currentIsland = this.collage.islands[3].items[0];
-                this.poiTypeFilter = "byProximity";
+                this.poiFilter = "byProximity";
                 this.renderingSubMaps = false;
 
                 this.zoomedOutWindow = this.collage.getBBoxCenteredOnMap(
@@ -493,9 +494,9 @@ export default {
             if (this.zoomLevel !== 0) {
                 this.outliningSubMaps = !this.outliningSubMaps;
                 if (this.outliningSubMaps) {
-                    this.poiTypeFilter = "allIslands";
+                    this.poiFilter = "allIslands";
                 } else {
-                    this.poiTypeFilter = "byProximity";
+                    this.poiFilter = "byProximity";
                 }
             } else {
                 const currentLevel3Map = this.collage.getMapFromViewportPos(
@@ -726,7 +727,7 @@ export default {
                 }
             }
 
-            const mode = this.poiTypeFilter;
+            const mode = this.poiFilter;
             if (mode == "byIsland") {
                 narrowedDownPoints = narrowedDownPoints.filter(poi =>
                     poi.islandIDs.includes(this.currentIsland.id)
@@ -778,6 +779,22 @@ export default {
                 newDebouncedY != this.debouncedFullMapPos.top
             ) {
                 this.debouncedFullMapPos = new Position(newDebouncedX, newDebouncedY);
+            }
+        },
+        scaleFactor(newValue, oldValue) {
+            const inflectionPoint = 0.5;
+            if (
+                newValue < inflectionPoint &&
+                oldValue > inflectionPoint &&
+                this.poiTypesOnAutopilot
+            ) {
+                this.allowedPOITypes = ["biome"];
+            } else if (
+                newValue > inflectionPoint &&
+                oldValue < inflectionPoint &&
+                this.poiTypesOnAutopilot
+            ) {
+                this.allowedPOITypes = ["normal", "village", "mining", "monsters", "biome"];
             }
         }
     },
