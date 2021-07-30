@@ -1043,6 +1043,144 @@ pois[3] = {
             y: -1230.79,
             text: "Jungle~",
             type: Biome
+        },
+        {
+            x: 9280.98,
+            y: -1521.08,
+            text: "the floating island",
+            type: Normal
+        },
+        {
+            x: 9839.64,
+            y: -1792.05,
+            text: "amethyst cave",
+            type: Normal
+        },
+        {
+            x: 9857.55,
+            y: -1424.87,
+            text: "the raviney ravine (underground)",
+            type: Mining
+        },
+        {
+            x: 9839.64,
+            y: -1041.27,
+            text: "the giant broken portal that it would be cool to get working again",
+            type: Normal
+        },
+        {
+            x: 10206.82,
+            y: -1174.11,
+            text: "bambooland",
+            type: Biome
+        },
+        {
+            x: 10197.86,
+            y: -1659.21,
+            text: "zomb spomber",
+            type: Monsters
+        },
+        {
+            x: 9651.57,
+            y: -1936.83,
+            text: "acacia village... 2!",
+            type: Village
+        },
+        {
+            x: 8950.05,
+            y: -666.63,
+            text: "nether portal (jungle zone entrance)",
+            type: Normal
+        },
+        {
+            x: 8435.1,
+            y: -900.97,
+            text: "talltree town",
+            type: Village
+        },
+        {
+            x: 8408.23,
+            y: -781.56,
+            text: "sunflower fields forever",
+            type: Biome
+        },
+        {
+            x: 8942.58,
+            y: -363.63,
+            text: "an entire gote",
+            type: Normal
+        },
+        {
+            x: 8838.1,
+            y: -80.04,
+            text: "the swampy swamp",
+            type: Biome
+        },
+        {
+            x: 9047.07,
+            y: -903.95,
+            text: "portalville",
+            type: Village
+        },
+        {
+            x: 3440.26,
+            y: 1878.07,
+            text: "tulpen!!",
+            type: Biome
+        },
+        {
+            x: 3173.62,
+            y: 1876.1,
+            text: "ravine-torn village",
+            type: Village
+        },
+        {
+            x: 3829.36,
+            y: -2326.99,
+            text: "gouged-out town",
+            type: Village
+        },
+        {
+            x: 3764.18,
+            y: -2151.21,
+            text: "a promising raviney thing",
+            type: Mining
+        },
+        {
+            x: 3171.64,
+            y: -2727.95,
+            text: "this one has a fucked-up floating bit",
+            type: Village
+        },
+        {
+            x: 3930.09,
+            y: 88.6,
+            text: "magmaed trench",
+            type: Normal
+        },
+        {
+            x: 4013.05,
+            y: 485.6,
+            text: "magma occurrence",
+            type: Normal
+        },
+        {
+            x: 3941.95,
+            y: -480.24,
+            text: 'coral "reef"',
+            type: Normal
+        },
+        {
+            x: 3657.53,
+            y: -1665.32,
+            text: "REALLY cool potential mining mountain",
+            type: Mining
+        },
+        {
+            x: 3860.97,
+            y: -1459.91,
+            text: "floodburgh",
+            type: Village
         }
     ].map(p => new PointOfInterest(p, 3))
 };
