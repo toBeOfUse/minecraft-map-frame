@@ -30,6 +30,9 @@ const IslandMask = tsx.component({
         const h = createElement;
         const i = context.props.island;
         const m = context.props.margin;
+        // TODO: this method of adding a margin won't, like, work, if there are
+        // horizontal lines going right below the reference point's y-level. and
+        // stuff. how do ???
         const referencePoint = {
             x: (i.minX + i.minY) / 2,
             y: (i.minY + i.maxY) / 2
@@ -158,13 +161,16 @@ const IslandBorder = tsx.component({
             const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
             const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
             const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
-            const imageBoxDimensions = { attrs: { width: edgeWidth, height: edgeWidth } };
+            // we are overlapping these svgs images very slightly to avoid the
+            // hairline cracks that appear between them in many browsers and svg
+            // viewers
+            const imageBoxDimensions = { attrs: { width: edgeWidth + 2, height: edgeWidth + 2 } };
             if (edgeAxis == "x") {
                 if (edgeDirection == 1) {
                     border.push(
                         <image
                             href="borders/top.png"
-                            x={cornerFrom.x}
+                            x={cornerFrom.x - 1}
                             y={cornerFrom.y - edgeWidth}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMax"
@@ -174,7 +180,7 @@ const IslandBorder = tsx.component({
                     border.push(
                         <image
                             href="borders/bottom.png"
-                            x={cornerTo.x}
+                            x={cornerTo.x - 1}
                             y={cornerFrom.y}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMin"
@@ -187,7 +193,7 @@ const IslandBorder = tsx.component({
                         <image
                             href="borders/right.png"
                             x={cornerFrom.x}
-                            y={cornerFrom.y}
+                            y={cornerFrom.y - 1}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMinYMin"
                         />
@@ -197,7 +203,7 @@ const IslandBorder = tsx.component({
                         <image
                             href="borders/left.png"
                             x={cornerFrom.x - edgeWidth}
-                            y={cornerTo.y}
+                            y={cornerTo.y - 1}
                             {...imageBoxDimensions}
                             preserveAspectRatio="xMaxYMin"
                         />
@@ -216,13 +222,17 @@ const SVGContainer = tsx.component({
         islands: {
             type: Array as () => ItemsInLevel<Island>[],
             required: true
+        },
+        id: {
+            type: String,
+            required: false
         }
     },
     render(createElement, context) {
         const level3Island = context.props.islands[3].items[0];
         return (
             <svg
-                id="overlay"
+                id={context.props.id}
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox={
                     `${level3Island.minX} ${level3Island.minY} ` +
@@ -231,7 +241,8 @@ const SVGContainer = tsx.component({
                 }
                 width="100%"
                 height="100%"
-                style="position: absolute; left: 0; top: 0; overflow: visible"
+                style="position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none"
+                shape-rendering="crispEdges"
             >
                 {context.children}
             </svg>
@@ -250,7 +261,7 @@ const MapUnderlay = tsx.component({
     },
     render(createElement, context) {
         return (
-            <SVGContainer islands={context.props.islands}>
+            <SVGContainer islands={context.props.islands} id="underlay">
                 <IslandMask island={context.props.islands[3].items[0]} fill="#D6BF97" margin={10} />
             </SVGContainer>
         );
@@ -276,7 +287,7 @@ const MapOverlay = tsx.component({
             mask.push(<IslandMask fill="black" island={island} />);
         }
         return (
-            <SVGContainer islands={p.islands}>
+            <SVGContainer islands={p.islands} id="overlay">
                 <mask id="level0Islands">{mask}</mask>
                 {p.fadingOutBGMaps ? (
                     <IslandMask
