@@ -553,12 +553,6 @@ pois[3] = {
             type: Biome
         },
         {
-            x: 425.99,
-            y: 504.46,
-            text: "mitchama canal junction",
-            type: Normal
-        },
-        {
             x: 2968.63,
             y: 1304.22,
             text: "spruce s'hovel",

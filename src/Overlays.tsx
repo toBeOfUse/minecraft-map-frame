@@ -1,7 +1,8 @@
 import Island from "./Island";
-import Vue, { PropType, VNode } from "vue";
+import { VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, CornerType, getEdgeLength, Corner } from "./Types";
+import { ItemsInLevel, Coords, CornerType, Corner, PathData } from "./Types";
+import paths from "./mapdata/paths";
 
 const MAP_BG = "#D6BF97";
 
@@ -320,6 +321,23 @@ const IslandBorder = tsx.component({
     }
 });
 
+const MapPath = tsx.component({
+    name: "MapPath",
+    functional: true,
+    props: {
+        path: {
+            type: PathData,
+            required: true
+        }
+    },
+    render(createElement, context) {
+        const path = context.props.path;
+        return path.pointsAlongPath.map(p => (
+            <image x={p.x} y={p.y} width="30" height="30" href={path.icon} />
+        ));
+    }
+});
+
 const SVGContainer = tsx.component({
     name: "SVGContainer",
     functional: true,
@@ -412,9 +430,12 @@ const MapOverlay = tsx.component({
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
+                {paths.map(p => (
+                    <MapPath path={p} />
+                ))}
             </SVGContainer>
         );
     }
 });
 
-export { MapOverlay, MapUnderlay };
+export { MapOverlay, MapUnderlay, PathData };

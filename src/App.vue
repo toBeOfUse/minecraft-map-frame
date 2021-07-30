@@ -31,11 +31,6 @@
                     height: level3MapSizePx + 'px',
                 }"
             />
-            <MapOverlay
-                :islands="collage.islands"
-                :outliningSubMaps="outliningSubMaps"
-                :fadingOutBGMaps="outliningSubMaps || highlightingMap"
-            />
             <img
                 v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
                 :src="'/maps/' + currentlyCenteredMap.file"
@@ -58,6 +53,11 @@
                     visiblity: zoomLevel == 0 ? '' : 'hidden',
                     opacity: zoomLevel == 0 ? 1 : 0,
                 }"
+            />
+            <MapOverlay
+                :islands="collage.islands"
+                :outliningSubMaps="outliningSubMaps"
+                :fadingOutBGMaps="outliningSubMaps || highlightingMap"
             />
             <MapMarker
                 v-for="location in currentPointsOfInterest"
@@ -143,7 +143,7 @@ import RBush from "rbush";
 import availableMaps from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapMarker from "./Marker.vue";
-import { Position, Dimensions, clamp, getEdgeLength } from "./Types.ts";
+import { Position, Dimensions, clamp, getEdgeLength, distance } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
 import { MapOverlay, MapUnderlay } from "./Overlays";
@@ -394,7 +394,7 @@ export default {
                         this.fullMapPos
                     );
 
-                    const newDistBetweenTouches = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                    const newDistBetweenTouches = distance({ x: x1, y: y1 }, { x: x2, y: y2 });
 
                     this.scaleFactor = clamp(
                         this.scaleFactor * (newDistBetweenTouches / this.lastDistBetweenTouches),
@@ -456,7 +456,7 @@ export default {
                     y2 = event.touches[1].pageY;
                 this.lastPanningX = (x1 + x2) / 2;
                 this.lastPanningY = (y1 + y2) / 2;
-                this.lastDistBetweenTouches = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                this.lastDistBetweenTouches = distance({ x: x1, y: y1 }, { x: x2, y: y2 });
             }
         },
         handlePointerRemove(event) {

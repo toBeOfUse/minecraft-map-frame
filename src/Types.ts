@@ -1,4 +1,5 @@
 import type Island from "./Island";
+import type {BBox} from "rbush";
 
 // simple cartesian grid types
 interface CSSDimensions {
@@ -221,15 +222,68 @@ class PointOfInterest {
   }
 }
 
+class PathData {
+  icon: string;
+  points: Coords[];
+  bounds: BBox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
+  spacing: number = 50;
+  smoothed: boolean;
+
+  constructor(icon: string, points: Coords[], smoothed = false) {
+      if (points.length < 1) {
+          throw "Cannot initialize path with empty points array";
+      }
+      this.icon = icon;
+      this.points = points;
+      this.smoothed = smoothed;
+      for (const point of points) {
+          if (point.x < this.bounds.minX) {
+              this.bounds.minX = point.x;
+          }
+          if (point.x > this.bounds.maxX) {
+              this.bounds.maxX = point.x;
+          }
+          if (point.y < this.bounds.minY) {
+              this.bounds.minY = point.y;
+          }
+          if (point.y > this.bounds.maxY) {
+              this.bounds.maxY = point.y;
+          }
+      }
+  }
+
+  get length(): number {
+      let result = 0;
+      for (let i = 1; i < this.points.length; i++) {
+          const p1 = this.points[i - 1];
+          const p2 = this.points[i];
+          result += distance(p1, p2);
+      }
+      return result;
+  }
+
+  get pointsAlongPath(): Coords[] {
+      const result: Coords[] = [];
+      let initialSpace = 0;
+      for (let i=1; i<this.points.length; i++) {
+        const from = this.points[i-1];
+        const to = this.points[i];
+        const lineLength = distance(from, to);
+        const pointsInLine = Math.floor((lineLength+initialSpace)/this.spacing);
+        for (let j = 0; j < pointsInLine; j++) {
+          const lineProgress = j/pointsInLine + initialSpace/lineLength;
+          result.push({x: from.x + (lineProgress * (to.x-from.x)), y: from.y + (lineProgress*(to.y-from.y))});
+        }
+        initialSpace = (pointsInLine * this.spacing + initialSpace) % this.spacing;
+      }
+      return result;
+  }
+}
+
 interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
   level: number;
   items: Type[];
 }
-
-/**
- * Always minX, minY, maxX, maxY in MapCollage units.
- */
-type Window = [number, number, number, number];
 
 // sigh
 function clamp(input: number, min: number, max: number) {
@@ -252,6 +306,10 @@ function getEdgeLength(level: number): number {
   return 128 * 2 ** level;
 }
 
+function distance(p1: Coords, p2: Coords) {
+  return Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2);
+}
+
 export {
   CSSDimensions,
   CSSPosition,
@@ -264,11 +322,12 @@ export {
   clamp,
   mod,
   getEdgeLength,
+  distance,
   PointOfInterest,
   StoredPOI,
   POIType,
   Line,
   Shape,
   ItemsInLevel,
-  Window
+  PathData
 };
