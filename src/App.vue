@@ -90,6 +90,10 @@
                         <label for="village"> Villages </label>
                     </span>
                     <span>
+                        <input id="biome" type="checkbox" value="biome" v-model="allowedPOITypes" />
+                        <label for="biome">Biomes</label>
+                    </span>
+                    <span>
                         <input
                             id="mining"
                             type="checkbox"
@@ -163,7 +167,7 @@ export default {
         lastPanningY: -1,
         lastDistBetweenTouches: -1,
         currentIsland: null,
-        allowedPOITypes: ["normal", "village", "mining", "monsters"],
+        allowedPOITypes: ["biome"], //["normal", "village", "mining", "monsters"],
         poiTypeFilter: "byProximity", // or "byIsland" or "allIslands"
         captionCoverageIndex: new RBush(),
         // whilst zooming in or out, it is necessary to have loaded into the DOM the
@@ -176,7 +180,7 @@ export default {
         // that are to be shown is calculated with MapCollage.getBBoxFromViewport.
         zoomedOutWindow: {},
         zoomedInWindow: {},
-        scaleFactor: 1,
+        scaleFactor: 0.2,
         maxScaleFactor: 1.5,
         minScaleFactor: 0.1,
         debug: ""
@@ -252,7 +256,7 @@ export default {
                 new Position(this.windowWidth / 2, this.windowHeight / 2),
                 this.fullMapPos
             );
-            let newFactor = this.scaleFactor + event.deltaY * -0.0005;
+            let newFactor = this.scaleFactor + event.deltaY * -0.00025;
             newFactor = clamp(newFactor, this.minScaleFactor, this.maxScaleFactor);
             if (newFactor !== this.scaleFactor) {
                 this.scaleFactor = newFactor;

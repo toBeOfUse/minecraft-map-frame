@@ -57,7 +57,8 @@ export default {
             village: "/emerald.png",
             mining: "/pickaxe.png",
             monsters: "/sword.png",
-            spawn: "/door2.png"
+            spawn: "/door2.png",
+            biome: "/biome.png"
         },
         handleNonMarkerClick: null,
         captionPosClass: "topCaption",

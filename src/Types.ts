@@ -181,6 +181,7 @@ enum POIType {
   Mining = "mining",
   Monsters = "monsters",
   Spawn = "spawn",
+  Biome = "biome"
 }
 
 interface StoredPOI {
