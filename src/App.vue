@@ -133,7 +133,13 @@
                         <label for="normal"> Other fun stuff </label>
                     </span>
                     <span>
-                        <input id="paths" type="checkbox" value="paths" v-model="showingPaths" />
+                        <input
+                            id="paths"
+                            type="checkbox"
+                            value="paths"
+                            v-model="showingPaths"
+                            :disabled="zoomLevel == 0"
+                        />
                         <label for="paths">Paths</label>
                     </span>
                 </div>
@@ -199,7 +205,7 @@ export default {
         zoomedInWindow: {},
         scaleFactor: 1,
         maxScaleFactor: 1.5,
-        minScaleFactor: 0.1,
+        minScaleFactor: 0.25,
         debug: "",
         showingPaths: false
     }),
@@ -309,7 +315,6 @@ export default {
                     this.allowedPOITypes = ["normal", "village", "mining", "monsters", "spawn"];
                 }
                 const { x, y } = map;
-                console.log("map at this position was clicked", x, y);
                 this.isMidZoom = true;
                 this.currentIsland = Island.getIslandContainingMap(0, { x, y });
                 this.poiFilter = "byIsland";
@@ -757,7 +762,7 @@ export default {
                 narrowedDownPoints = narrowedDownPoints.filter(poi => !poi.onlyLevel3);
             } else {
                 if (mode !== "byProximity") {
-                    console.log("unsupported point of interest filtering mode:", mode);
+                    console.error("unsupported point of interest filtering mode:", mode);
                 }
             }
             const poiTypeGroups = {
@@ -808,20 +813,22 @@ export default {
             if (
                 newValue < inflectionPoint &&
                 oldValue > inflectionPoint &&
-                this.poiTypesOnAutopilot
+                this.poiTypesOnAutopilot &&
+                this.zoomLevel == 3
             ) {
                 this.allowedPOITypes = ["biome"];
             } else if (
                 newValue > inflectionPoint &&
                 oldValue < inflectionPoint &&
-                this.poiTypesOnAutopilot
+                this.poiTypesOnAutopilot &&
+                this.zoomLevel == 3
             ) {
                 this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
             }
         },
         showingPaths(newValue, oldValue) {
             if (newValue && !oldValue) {
-                this.allowedPOITypes = ["paths"];
+                this.allowedPOITypes = [];
             }
         }
     },
