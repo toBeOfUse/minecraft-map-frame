@@ -343,6 +343,8 @@ const MapPath = tsx.component({
         const px = context.props.pxPerBlock;
         const width = (path.bounds.maxX - path.bounds.minX) * px;
         const height = (path.bounds.maxY - path.bounds.minY) * px;
+        const minPoints = path.length / 70;
+        console.log(path.length);
         return (
             <div
                 class="path"
@@ -353,7 +355,7 @@ const MapPath = tsx.component({
                     ...context.props.position.toCSS()
                 }}
             >
-                {path.getPoints((path.length * px) / 30).map((p, i) => (
+                {path.getPoints(Math.max((path.length * px) / 30, minPoints)).map((p, i) => (
                     <img
                         width="30"
                         height="30"
