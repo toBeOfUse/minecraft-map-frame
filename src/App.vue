@@ -303,6 +303,7 @@ export default {
         },
         levelChange(newLevel, map) {
             if (newLevel == 0) {
+                this.showingPaths = false;
                 const { x, y } = map;
                 console.log("map at this position was clicked", x, y);
                 this.isMidZoom = true;
