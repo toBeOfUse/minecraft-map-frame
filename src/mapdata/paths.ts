@@ -13,6 +13,10 @@ const paths: PathData[] = [
         { x: -451, y: -193 },
         { x: -1195, y: -919 },
         { x: -1366, y: -919 }
+    ]),
+    new PathData("/cobblestone.png", [
+        { x: -503, y: -57 },
+        { x: -1106, y: -57 }
     ])
 ];
 

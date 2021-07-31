@@ -32,16 +32,6 @@
                 }"
             />
             <img
-                v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
-                :src="'/maps/' + currentlyCenteredMap.file"
-                :style="{
-                    width: level3MapSizePx + 'px',
-                    height: level3MapSizePx + 'px',
-                    ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
-                }"
-                class="subMap"
-            />
-            <img
                 v-for="subMap in currentlyVisibleSubMaps"
                 :key="subMap.file"
                 :src="`maps/${subMap.file}`"
@@ -57,7 +47,17 @@
             <MapOverlay
                 :islands="collage.islands"
                 :outliningSubMaps="outliningSubMaps"
-                :fadingOutBGMaps="outliningSubMaps || highlightingMap"
+                :fadingOutBGMaps="outliningSubMaps || highlightingMap || showingPaths"
+            />
+            <img
+                v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
+                :src="'/maps/' + currentlyCenteredMap.file"
+                :style="{
+                    width: level3MapSizePx + 'px',
+                    height: level3MapSizePx + 'px',
+                    ...collage.getPosWithinCollage(currentlyCenteredMap).toCSS(),
+                }"
+                class="subMap"
             />
             <MapMarker
                 v-for="location in currentPointsOfInterest"
@@ -68,7 +68,7 @@
                 :coverageIndex="captionCoverageIndex"
                 :initiallyActive="location.x == 64 && location.y == 64"
             />
-            <PathsOverlay :collage="collage" :paths="paths" />
+            <PathsOverlay v-if="showingPaths" :collage="collage" :paths="paths" />
         </div>
         <div id="cornerModal">
             <span
@@ -122,6 +122,10 @@
                             v-model="allowedPOITypes"
                         />
                         <label for="normal"> Other fun stuff </label>
+                    </span>
+                    <span>
+                        <input id="paths" type="checkbox" value="paths" v-model="showingPaths" />
+                        <label for="paths">Paths</label>
                     </span>
                 </div>
             </div>
@@ -187,7 +191,8 @@ export default {
         scaleFactor: 1,
         maxScaleFactor: 1.5,
         minScaleFactor: 0.1,
-        debug: ""
+        debug: "",
+        showingPaths: false
     }),
     created() {
         this.collage = new MapCollage(availableMaps, pointsOfInterest, {
@@ -798,6 +803,11 @@ export default {
                 this.poiTypesOnAutopilot
             ) {
                 this.allowedPOITypes = ["normal", "village", "mining", "monsters", "biome"];
+            }
+        },
+        showingPaths(newValue, oldValue) {
+            if (newValue && !oldValue) {
+                this.allowedPOITypes = [];
             }
         }
     },

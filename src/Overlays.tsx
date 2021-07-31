@@ -344,7 +344,6 @@ const MapPath = tsx.component({
         const width = (path.bounds.maxX - path.bounds.minX) * px;
         const height = (path.bounds.maxY - path.bounds.minY) * px;
         const minPoints = path.length / 70;
-        console.log(path.length);
         return (
             <div
                 class="path"
