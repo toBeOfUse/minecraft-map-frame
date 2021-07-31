@@ -256,13 +256,15 @@ pois[3] = {
             x: 89.5,
             y: 96.24,
             text: "cuteville",
-            type: Village
+            type: Village,
+            pathMarker: true
         },
         {
             x: 778.24,
             y: 570.64,
             text: "russel village",
-            type: Village
+            type: Village,
+            pathMarker: true
         },
         {
             x: 566.4,
@@ -345,8 +347,9 @@ pois[3] = {
         {
             x: -39.92,
             y: -54.26,
-            text: "cassie's ravine (feat. mitchama tunnel & railroad access)",
-            type: Normal
+            text: "cassie's ravine",
+            type: Normal,
+            pathMarker: true
         },
         {
             x: -825.52,
@@ -640,7 +643,8 @@ pois[3] = {
             x: 2357.9,
             y: -1272.89,
             text: "vatican city",
-            type: Village
+            type: Village,
+            pathMarker: true
         },
         {
             x: 2642.69,
@@ -670,7 +674,8 @@ pois[3] = {
             x: -1108.65,
             y: -106.69,
             text: "ice farm farm",
-            type: Normal
+            type: Normal,
+            pathMarker: true
         },
         {
             x: -1179.58,
@@ -796,7 +801,8 @@ pois[3] = {
             x: -1463.27,
             y: -917.01,
             text: "acacia town (pretty)",
-            type: Village
+            type: Village,
+            pathMarker: true
         },
         {
             x: -1156.94,
@@ -1084,7 +1090,8 @@ pois[3] = {
             x: 8950.05,
             y: -666.63,
             text: "nether portal (jungle zone entrance)",
-            type: Normal
+            type: Normal,
+            pathMarker: true
         },
         {
             x: 8435.1,

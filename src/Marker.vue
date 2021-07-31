@@ -83,6 +83,10 @@ export default {
         initiallyActive: {
             type: Boolean,
             required: false
+        },
+        permanentlyOn: {
+            type: Boolean,
+            required: false
         }
     },
     created() {
@@ -119,7 +123,7 @@ export default {
     },
     computed: {
         displayingCaption() {
-            return this.clicked || this.hovered;
+            return this.clicked || this.hovered || this.permanentlyOn;
         }
     },
     watch: {

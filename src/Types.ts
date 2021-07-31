@@ -190,6 +190,7 @@ interface StoredPOI {
   y: number;
   text: String;
   type: POIType;
+  pathMarker?: boolean;
 }
 
 class PointOfInterest {
@@ -201,6 +202,7 @@ class PointOfInterest {
   onlyLevel3: boolean = true;
   level: 0 | 3;
   id: number;
+  pathMarker: boolean;
 
   private static idSource = 0;
 
@@ -210,6 +212,7 @@ class PointOfInterest {
     this.text = record.text;
     this.type = record.type;
     this.level = level;
+    this.pathMarker = record.pathMarker || false;
     this.id = PointOfInterest.idSource;
     PointOfInterest.idSource += 1;
   }

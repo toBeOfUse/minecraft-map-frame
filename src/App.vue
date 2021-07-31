@@ -75,6 +75,7 @@
                 :POI="location"
                 :coverageIndex="captionCoverageIndex"
                 :initiallyActive="location.x == 64 && location.y == 64"
+                :permanentlyOn="showingPaths && location.pathMarker"
             />
             <PathsOverlay v-if="showingPaths" :collage="collage" :paths="paths" />
         </div>
@@ -304,6 +305,9 @@ export default {
         levelChange(newLevel, map) {
             if (newLevel == 0) {
                 this.showingPaths = false;
+                if (!this.allowedPOITypes.length) {
+                    this.allowedPOITypes = ["normal", "village", "mining", "monsters", "spawn"];
+                }
                 const { x, y } = map;
                 console.log("map at this position was clicked", x, y);
                 this.isMidZoom = true;
@@ -762,7 +766,8 @@ export default {
             return narrowedDownPoints.filter(
                 poi =>
                     this.allowedPOITypes.includes(poi.type) ||
-                    this.allowedPOITypes.includes(poiTypeGroups[poi.type])
+                    this.allowedPOITypes.includes(poiTypeGroups[poi.type]) ||
+                    (this.showingPaths && poi.pathMarker)
             );
         },
         currentlyVisibleMaps() {
@@ -816,7 +821,7 @@ export default {
         },
         showingPaths(newValue, oldValue) {
             if (newValue && !oldValue) {
-                this.allowedPOITypes = [];
+                this.allowedPOITypes = ["paths"];
             }
         }
     },

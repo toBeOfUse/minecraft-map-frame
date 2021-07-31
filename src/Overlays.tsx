@@ -344,7 +344,7 @@ const MapPath = tsx.component({
         const width = (path.bounds.maxX - path.bounds.minX) * px;
         const height = (path.bounds.maxY - path.bounds.minY) * px;
         const points = path.length / 70;
-        const iconSize = Math.min(px * 80, 30);
+        const iconSize = Math.min(px * 55, 33);
         return (
             <div
                 class="path"
