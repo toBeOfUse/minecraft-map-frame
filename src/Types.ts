@@ -269,7 +269,7 @@ class PathData {
         const from = this.points[i-1];
         const to = this.points[i];
         const lineLength = distance(from, to);
-        const pointsInLine = Math.floor((lineLength+initialSpace)/spacing);
+        const pointsInLine = Math.floor((lineLength-initialSpace)/spacing);
         for (let j = 0; j < pointsInLine; j++) {
           const lineProgress = j/pointsInLine + initialSpace/lineLength;
           result.push({x: from.x + (lineProgress * (to.x-from.x)), y: from.y + (lineProgress*(to.y-from.y))});

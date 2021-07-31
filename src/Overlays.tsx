@@ -341,28 +341,32 @@ const MapPath = tsx.component({
     render(createElement, context) {
         const path = context.props.path;
         const px = context.props.pxPerBlock;
+        const width = (path.bounds.maxX - path.bounds.minX) * px;
+        const height = (path.bounds.maxY - path.bounds.minY) * px;
         return (
             <div
                 class="path"
                 style={{
                     position: "absolute",
-                    width: (path.bounds.maxX - path.bounds.minX) * px,
-                    height: (path.bounds.maxY - path.bounds.minY) * px,
+                    width: width + "px",
+                    height: height + "px",
                     ...context.props.position.toCSS()
                 }}
             >
-                {path.getPoints((path.length * px) / 40).map(p => (
+                {path.getPoints((path.length * px) / 30).map((p, i) => (
                     <img
                         width="30"
                         height="30"
                         src={path.icon}
                         style={{
                             position: "absolute",
-                            left: (p.x - path.bounds.minX) * px + "px",
-                            top: (p.y - path.bounds.minY) * px + "px",
+                            left: (((p.x - path.bounds.minX) * px) / width) * 100 + "%",
+                            top: (((p.y - path.bounds.minY) * px) / height) * 100 + "%",
                             pointerEvents: "none",
-                            transform: "translate(-50%, -50%)"
+                            transform: "translate(-50%, -50%)",
+                            transition: "left 100ms ease-in-out, top 100ms ease-in-out"
                         }}
+                        key={i}
                     />
                 ))}
             </div>
