@@ -226,7 +226,6 @@ class PathData {
   icon: string;
   points: Coords[];
   bounds: BBox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-  spacing: number = 50;
   smoothed: boolean;
 
   constructor(icon: string, points: Coords[], smoothed = false) {
@@ -262,19 +261,20 @@ class PathData {
       return result;
   }
 
-  get pointsAlongPath(): Coords[] {
+  getPoints(howMany: number): Coords[] {
       const result: Coords[] = [];
       let initialSpace = 0;
+      const spacing = this.length / howMany;
       for (let i=1; i<this.points.length; i++) {
         const from = this.points[i-1];
         const to = this.points[i];
         const lineLength = distance(from, to);
-        const pointsInLine = Math.floor((lineLength+initialSpace)/this.spacing);
+        const pointsInLine = Math.floor((lineLength+initialSpace)/spacing);
         for (let j = 0; j < pointsInLine; j++) {
           const lineProgress = j/pointsInLine + initialSpace/lineLength;
           result.push({x: from.x + (lineProgress * (to.x-from.x)), y: from.y + (lineProgress*(to.y-from.y))});
         }
-        initialSpace = (pointsInLine * this.spacing + initialSpace) % this.spacing;
+        initialSpace = (pointsInLine * spacing + initialSpace) % spacing;
       }
       return result;
   }

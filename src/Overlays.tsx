@@ -1,8 +1,8 @@
 import Island from "./Island";
 import { VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, CornerType, Corner, PathData } from "./Types";
-import paths from "./mapdata/paths";
+import { ItemsInLevel, Coords, CornerType, Corner, PathData, Position } from "./Types";
+import MapCollage from "./MapCollage";
 
 const MAP_BG = "#D6BF97";
 
@@ -328,13 +328,45 @@ const MapPath = tsx.component({
         path: {
             type: PathData,
             required: true
+        },
+        pxPerBlock: {
+            type: Number,
+            required: true
+        },
+        position: {
+            type: Object as () => Position,
+            required: true
         }
     },
     render(createElement, context) {
         const path = context.props.path;
-        return path.pointsAlongPath.map(p => (
-            <image x={p.x} y={p.y} width="30" height="30" href={path.icon} />
-        ));
+        const px = context.props.pxPerBlock;
+        return (
+            <div
+                class="path"
+                style={{
+                    position: "absolute",
+                    width: (path.bounds.maxX - path.bounds.minX) * px,
+                    height: (path.bounds.maxY - path.bounds.minY) * px,
+                    ...context.props.position.toCSS()
+                }}
+            >
+                {path.getPoints((path.length * px) / 40).map(p => (
+                    <img
+                        width="30"
+                        height="30"
+                        src={path.icon}
+                        style={{
+                            position: "absolute",
+                            left: (p.x - path.bounds.minX) * px + "px",
+                            top: (p.y - path.bounds.minY) * px + "px",
+                            pointerEvents: "none",
+                            transform: "translate(-50%, -50%)"
+                        }}
+                    />
+                ))}
+            </div>
+        );
     }
 });
 
@@ -430,12 +462,41 @@ const MapOverlay = tsx.component({
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
-                {paths.map(p => (
-                    <MapPath path={p} />
-                ))}
             </SVGContainer>
         );
     }
 });
 
-export { MapOverlay, MapUnderlay, PathData };
+const PathsOverlay = tsx.component({
+    name: "PathsOverlay",
+    props: {
+        collage: {
+            type: MapCollage,
+            required: true
+        },
+        paths: {
+            type: Array as () => PathData[],
+            required: true
+        }
+    },
+    functional: true,
+    render(createElement, context) {
+        const c = context.props.collage;
+        return (
+            <div
+                id="pathsOverlay"
+                style="position: absolute; left: 0; top: 0; width: 100%; height: 100%"
+            >
+                {context.props.paths.map(p => (
+                    <MapPath
+                        path={p}
+                        pxPerBlock={c.pxPerBlock}
+                        position={c.getPosWithinCollage({ x: p.bounds.minX, y: p.bounds.minY })}
+                    />
+                ))}
+            </div>
+        );
+    }
+});
+
+export { MapOverlay, MapUnderlay, PathsOverlay };

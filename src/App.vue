@@ -68,6 +68,7 @@
                 :coverageIndex="captionCoverageIndex"
                 :initiallyActive="location.x == 64 && location.y == 64"
             />
+            <PathsOverlay :collage="collage" :paths="paths" />
         </div>
         <div id="cornerModal">
             <span
@@ -146,12 +147,14 @@ import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength, distance } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import Island from "./Island";
-import { MapOverlay, MapUnderlay } from "./Overlays";
+import paths from "./mapdata/paths";
+import { MapOverlay, MapUnderlay, PathsOverlay } from "./Overlays";
 
 export default {
     name: "App",
-    components: { MapMarker, MapOverlay, MapUnderlay },
+    components: { MapMarker, MapOverlay, MapUnderlay, PathsOverlay },
     data: () => ({
+        paths: Object.freeze(paths),
         collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",
         mouseX: 0,
