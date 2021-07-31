@@ -444,8 +444,14 @@ const MapOverlay = tsx.component({
             type: Array as () => ItemsInLevel<Island>[],
             required: true
         },
+        paths: {
+            type: Array as () => PathData[],
+            required: false,
+            default: []
+        },
         outliningSubMaps: { type: Boolean, required: false, default: false },
-        fadingOutBGMaps: { type: Boolean, required: false, default: true }
+        fadingOutBGMaps: { type: Boolean, required: false, default: true },
+        highlightingPaths: { type: Boolean, required: false, default: false }
     },
     render(createElement, context) {
         const p = context.props;
@@ -454,14 +460,40 @@ const MapOverlay = tsx.component({
         for (const island of p.islands[0].items) {
             mask.push(<IslandMask fill="black" island={island} />);
         }
+        const pathMask = [<IslandMask island={level3Island} fill="white" />].concat(
+            p.paths.map(path => (
+                <path
+                    stroke="black"
+                    stroke-width="100"
+                    fill="none"
+                    d={
+                        `M ${path.points[0].x},${path.points[0].y} ` +
+                        path.points.map(p => `L ${p.x},${p.y}`).join(" ")
+                    }
+                    filter="url(#blur)"
+                />
+            ))
+        );
         return (
             <SVGContainer islands={p.islands} id="overlay">
-                <mask id="level0Islands">{mask}</mask>
+                <defs>
+                    <filter id="blur">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                    </filter>
+                    <mask id="level0Islands">{mask}</mask>
+                    <mask id="paths">{pathMask}</mask>
+                </defs>
                 {p.fadingOutBGMaps ? (
                     <IslandMask
                         island={level3Island}
                         fill="#ffffff44"
-                        mask={p.outliningSubMaps ? "url(#level0Islands)" : ""}
+                        mask={
+                            p.outliningSubMaps
+                                ? "url(#level0Islands)"
+                                : p.highlightingPaths
+                                ? "url(#paths)"
+                                : ""
+                        }
                     />
                 ) : null}
                 {p.outliningSubMaps

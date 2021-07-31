@@ -17,6 +17,23 @@ const paths: PathData[] = [
     new PathData("/cobblestone.png", [
         { x: -503, y: -57 },
         { x: -1106, y: -57 }
+    ]),
+    new PathData("/lilypad.png", [
+        { x: 654.42, y: 448.04 },
+        { x: 589.75, y: 318.78 },
+        { x: 719.08, y: 93.99 },
+        { x: 1211.42, y: -258.88 },
+        { x: 1679.8, y: -722.0 },
+        { x: 2189.41, y: -1159.26 }
+    ]),
+    new PathData("/nether_oak_boat.png", [
+        { x: 172, y: 53 },
+        { x: 2311, y: 53 },
+        { x: 2311, y: -1326 }
+    ]),
+    new PathData("/nether_oak_boat.png", [
+        { x: 2311, y: 53 },
+        { x: 8950, y: -667 }
     ])
 ];
 

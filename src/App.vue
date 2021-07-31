@@ -48,9 +48,17 @@
                 :islands="collage.islands"
                 :outliningSubMaps="outliningSubMaps"
                 :fadingOutBGMaps="outliningSubMaps || highlightingMap || showingPaths"
+                :highlightingPaths="showingPaths"
+                :paths="paths"
             />
             <img
-                v-if="currentlyCenteredMap && !outliningSubMaps && highlightingMap && !isMidZoom"
+                v-if="
+                    currentlyCenteredMap &&
+                    !outliningSubMaps &&
+                    highlightingMap &&
+                    !isMidZoom &&
+                    !showingPaths
+                "
                 :src="'/maps/' + currentlyCenteredMap.file"
                 :style="{
                     width: level3MapSizePx + 'px',
@@ -174,7 +182,7 @@ export default {
         lastPanningY: -1,
         lastDistBetweenTouches: -1,
         currentIsland: null,
-        allowedPOITypes: ["normal", "village", "mining", "monsters", "biome"],
+        allowedPOITypes: ["normal", "village", "mining", "monsters"],
         poiTypesOnAutopilot: true,
         poiFilter: "byProximity", // or "byIsland" or "allIslands"
         captionCoverageIndex: new RBush(),
@@ -802,7 +810,7 @@ export default {
                 oldValue < inflectionPoint &&
                 this.poiTypesOnAutopilot
             ) {
-                this.allowedPOITypes = ["normal", "village", "mining", "monsters", "biome"];
+                this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
             }
         },
         showingPaths(newValue, oldValue) {
