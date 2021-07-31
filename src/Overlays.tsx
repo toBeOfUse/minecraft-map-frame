@@ -343,7 +343,8 @@ const MapPath = tsx.component({
         const px = context.props.pxPerBlock;
         const width = (path.bounds.maxX - path.bounds.minX) * px;
         const height = (path.bounds.maxY - path.bounds.minY) * px;
-        const minPoints = path.length / 70;
+        const points = path.length / 70;
+        const iconSize = Math.min(px * 80, 30);
         return (
             <div
                 class="path"
@@ -354,10 +355,10 @@ const MapPath = tsx.component({
                     ...context.props.position.toCSS()
                 }}
             >
-                {path.getPoints(Math.max((path.length * px) / 30, minPoints)).map((p, i) => (
+                {path.getPoints(points).map((p, i) => (
                     <img
-                        width="30"
-                        height="30"
+                        width={iconSize}
+                        height={iconSize}
                         src={path.icon}
                         style={{
                             position: "absolute",
@@ -464,13 +465,17 @@ const MapOverlay = tsx.component({
             p.paths.map(path => (
                 <path
                     stroke="black"
-                    stroke-width="100"
+                    stroke-width="65"
                     fill="none"
                     d={
                         `M ${path.points[0].x},${path.points[0].y} ` +
-                        path.points.map(p => `L ${p.x},${p.y}`).join(" ")
+                        path.points
+                            .slice(1)
+                            .map(p => `L ${p.x},${p.y}`)
+                            .join(" ")
                     }
-                    filter="url(#blur)"
+                    stroke-linejoin="round"
+                    filter={path.smoothed ? "url(#blur)" : ""}
                 />
             ))
         );
@@ -478,7 +483,7 @@ const MapOverlay = tsx.component({
             <SVGContainer islands={p.islands} id="overlay">
                 <defs>
                     <filter id="blur">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="15" />
                     </filter>
                     <mask id="level0Islands">{mask}</mask>
                     <mask id="paths">{pathMask}</mask>
