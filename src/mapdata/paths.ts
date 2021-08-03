@@ -1,6 +1,20 @@
 import { PathData } from "../Types";
 
 const paths: PathData[] = [
+    new PathData("/nether_oak_boat.png", "#451952", [
+        { x: 172, y: 53 },
+        { x: 2311, y: 53 },
+        { x: 2311, y: -1326 }
+    ]),
+    new PathData(
+        "/nether_oak_boat.png",
+        "#451952",
+        [
+            { x: 2311, y: 53 },
+            { x: 8950, y: -667 }
+        ],
+        true
+    ),
     new PathData("/oak_boat.png", "blue", [
         { x: 204, y: 157 },
         { x: 420, y: 250 },
@@ -32,20 +46,6 @@ const paths: PathData[] = [
         ],
         true
     ),
-    // new PathData("/nether_oak_boat.png", "#451952", [
-    //     { x: 172, y: 53 },
-    //     { x: 2311, y: 53 },
-    //     { x: 2311, y: -1326 }
-    // ]),
-    // new PathData(
-    //     "/nether_oak_boat.png",
-    //     "#451952",
-    //     [
-    //         { x: 2311, y: 53 },
-    //         { x: 8950, y: -667 }
-    //     ],
-    //     true
-    // )
 ];
 
 export default paths;
