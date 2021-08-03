@@ -1,5 +1,5 @@
 import type Island from "./Island";
-import type {BBox} from "rbush";
+import type { BBox } from "rbush";
 
 // simple cartesian grid types
 interface CSSDimensions {
@@ -217,7 +217,7 @@ class PointOfInterest {
     PointOfInterest.idSource += 1;
   }
 
-  isPartOfIsland(island: Island){
+  isPartOfIsland(island: Island) {
     this.islandIDs.push(island.id);
     if (island.level != 3) {
       this.onlyLevel3 = false;
@@ -230,56 +230,58 @@ class PathData {
   points: Coords[];
   bounds: BBox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   smoothed: boolean;
+  color: string;
 
-  constructor(icon: string, points: Coords[], smoothed = false) {
-      if (points.length < 1) {
-          throw "Cannot initialize path with empty points array";
+  constructor(icon: string, color: string, points: Coords[], smoothed = false) {
+    if (points.length < 1) {
+      throw "Cannot initialize path with empty points array";
+    }
+    this.icon = icon;
+    this.points = points;
+    this.smoothed = smoothed;
+    this.color = color;
+    for (const point of points) {
+      if (point.x < this.bounds.minX) {
+        this.bounds.minX = point.x;
       }
-      this.icon = icon;
-      this.points = points;
-      this.smoothed = smoothed;
-      for (const point of points) {
-          if (point.x < this.bounds.minX) {
-              this.bounds.minX = point.x;
-          }
-          if (point.x > this.bounds.maxX) {
-              this.bounds.maxX = point.x;
-          }
-          if (point.y < this.bounds.minY) {
-              this.bounds.minY = point.y;
-          }
-          if (point.y > this.bounds.maxY) {
-              this.bounds.maxY = point.y;
-          }
+      if (point.x > this.bounds.maxX) {
+        this.bounds.maxX = point.x;
       }
+      if (point.y < this.bounds.minY) {
+        this.bounds.minY = point.y;
+      }
+      if (point.y > this.bounds.maxY) {
+        this.bounds.maxY = point.y;
+      }
+    }
   }
 
   get length(): number {
-      let result = 0;
-      for (let i = 1; i < this.points.length; i++) {
-          const p1 = this.points[i - 1];
-          const p2 = this.points[i];
-          result += distance(p1, p2);
-      }
-      return result;
+    let result = 0;
+    for (let i = 1; i < this.points.length; i++) {
+      const p1 = this.points[i - 1];
+      const p2 = this.points[i];
+      result += distance(p1, p2);
+    }
+    return result;
   }
 
   getPoints(howMany: number): Coords[] {
-      const result: Coords[] = [];
-      let initialSpace = 0;
-      const spacing = this.length / howMany;
-      for (let i=1; i<this.points.length; i++) {
-        const from = this.points[i-1];
-        const to = this.points[i];
-        const lineLength = distance(from, to);
-        const pointsInLine = Math.round((lineLength-initialSpace)/spacing);
-        for (let j = 0; j < pointsInLine; j++) {
-          const lineProgress = j/pointsInLine + initialSpace/lineLength;
-          result.push({x: from.x + (lineProgress * (to.x-from.x)), y: from.y + (lineProgress*(to.y-from.y))});
-        }
-        initialSpace = (pointsInLine * spacing + initialSpace) % spacing;
+    const result: Coords[] = [];
+    let initialSpace = 0;
+    const spacing = this.length / howMany;
+    for (let i = 1; i < this.points.length; i++) {
+      const from = this.points[i - 1];
+      const to = this.points[i];
+      const lineLength = distance(from, to);
+      const pointsInLine = Math.round((lineLength - initialSpace) / spacing);
+      for (let j = 0; j < pointsInLine; j++) {
+        const lineProgress = j / pointsInLine + initialSpace / lineLength;
+        result.push({ x: from.x + (lineProgress * (to.x - from.x)), y: from.y + (lineProgress * (to.y - from.y)) });
       }
-      return result;
+      initialSpace = (pointsInLine * spacing + initialSpace) % spacing;
+    }
+    return result;
   }
 }
 
@@ -310,7 +312,7 @@ function getEdgeLength(level: number): number {
 }
 
 function distance(p1: Coords, p2: Coords) {
-  return Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2);
+  return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
 }
 
 export {
