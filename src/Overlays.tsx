@@ -328,51 +328,45 @@ const MapPath = tsx.component({
         path: {
             type: PathData,
             required: true
-        },
-        pxPerBlock: {
-            type: Number,
-            required: true
-        },
-        position: {
-            type: Object as () => Position,
-            required: true
         }
     },
     render(createElement, context) {
         const path = context.props.path;
-        const px = context.props.pxPerBlock;
-        const width = (path.bounds.maxX - path.bounds.minX) * px;
-        const height = (path.bounds.maxY - path.bounds.minY) * px;
-        const points = path.length / 70;
-        const iconSize = Math.min(px * 55, 33);
-        return (
-            <div
-                class="path"
-                style={{
-                    position: "absolute",
-                    width: width + "px",
-                    height: height + "px",
-                    ...context.props.position.toCSS()
-                }}
-            >
-                {path.getPoints(points).map((p, i) => (
-                    <img
-                        width={iconSize}
-                        height={iconSize}
-                        src={path.icon}
-                        style={{
-                            position: "absolute",
-                            left: (((p.x - path.bounds.minX) * px) / width) * 100 + "%",
-                            top: (((p.y - path.bounds.minY) * px) / height) * 100 + "%",
-                            pointerEvents: "none",
-                            transform: "translate(-50%, -50%)",
-                            transition: "left 100ms ease-in-out, top 100ms ease-in-out"
-                        }}
-                        key={i}
+        return [
+            <path
+                fill="none"
+                stroke={path.darkColor}
+                stroke-width="20"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d={path.toCommands()}
+            />,
+            ...path
+                .getAccentPoints(200)
+                .map(p => (
+                    <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="20"
+                        fill={path.color}
+                        stroke={path.darkColor}
+                        stroke-width="2.5"
                     />
-                ))}
-            </div>
-        );
+                )),
+            <path
+                fill="none"
+                stroke={path.color}
+                stroke-width="15"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d={path.toCommands()}
+            />,
+            ...path
+                .getAccentPoints(200)
+                .map(p => (
+                    <image href={path.icon} x={p.x - 16} y={p.y - 16} width="32" height="32" />
+                ))
+        ];
     }
 });
 
@@ -403,7 +397,6 @@ const SVGContainer = tsx.component({
                 width="100%"
                 height="100%"
                 style="position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none"
-                shape-rendering="crispEdges"
             >
                 {context.children}
             </svg>
@@ -461,84 +454,43 @@ const MapOverlay = tsx.component({
         for (const island of p.islands[0].items) {
             mask.push(<IslandMask fill="black" island={island} />);
         }
-        const pathMask = [<IslandMask island={level3Island} fill="white" />].concat(
-            p.paths.map(path => (
-                <path
-                    stroke="black"
-                    stroke-width="65"
-                    fill="none"
-                    d={
-                        `M ${path.points[0].x},${path.points[0].y} ` +
-                        path.points
-                            .slice(1)
-                            .map(p => `L ${p.x},${p.y}`)
-                            .join(" ")
-                    }
-                    stroke-linejoin="round"
-                    filter={path.smoothed ? "url(#blur)" : ""}
-                />
-            ))
-        );
+        // const pathMask = [<IslandMask island={level3Island} fill="white" />].concat(
+        //     p.paths.map(path => (
+        //         <path
+        //             stroke="black"
+        //             stroke-width="65"
+        //             fill="none"
+        //             d={
+        //                 `M ${path.points[0].x},${path.points[0].y} ` +
+        //                 path.points
+        //                     .slice(1)
+        //                     .map(p => `L ${p.x},${p.y}`)
+        //                     .join(" ")
+        //             }
+        //             stroke-linejoin="round"
+        //             filter={path.smoothed ? "url(#blur)" : ""}
+        //         />
+        //     ))
+        // );
         return (
             <SVGContainer islands={p.islands} id="overlay">
                 <defs>
-                    <filter id="blur">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="15" />
-                    </filter>
                     <mask id="level0Islands">{mask}</mask>
-                    <mask id="paths">{pathMask}</mask>
                 </defs>
                 {p.fadingOutBGMaps ? (
                     <IslandMask
                         island={level3Island}
                         fill="#ffffff44"
-                        mask={
-                            p.outliningSubMaps
-                                ? "url(#level0Islands)"
-                                : p.highlightingPaths
-                                ? "url(#paths)"
-                                : ""
-                        }
+                        mask={p.outliningSubMaps ? "url(#level0Islands)" : ""}
                     />
                 ) : null}
                 {p.outliningSubMaps
                     ? p.islands[0].items.map(i => <IslandOutline island={i} />)
                     : null}
+                {p.highlightingPaths ? context.props.paths.map(p => <MapPath path={p} />) : null}
             </SVGContainer>
         );
     }
 });
 
-const PathsOverlay = tsx.component({
-    name: "PathsOverlay",
-    props: {
-        collage: {
-            type: MapCollage,
-            required: true
-        },
-        paths: {
-            type: Array as () => PathData[],
-            required: true
-        }
-    },
-    functional: true,
-    render(createElement, context) {
-        const c = context.props.collage;
-        return (
-            <div
-                id="pathsOverlay"
-                style="position: absolute; left: 0; top: 0; width: 100%; height: 100%"
-            >
-                {context.props.paths.map(p => (
-                    <MapPath
-                        path={p}
-                        pxPerBlock={c.pxPerBlock}
-                        position={c.getPosWithinCollage({ x: p.bounds.minX, y: p.bounds.minY })}
-                    />
-                ))}
-            </div>
-        );
-    }
-});
-
-export { MapOverlay, MapUnderlay, PathsOverlay };
+export { MapOverlay, MapUnderlay };

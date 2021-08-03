@@ -1,5 +1,7 @@
 import type Island from "./Island";
 import type { BBox } from "rbush";
+import chroma from "chroma-js";
+import { Bezier } from "bezier-js";
 
 // simple cartesian grid types
 interface CSSDimensions {
@@ -225,12 +227,64 @@ class PointOfInterest {
   }
 }
 
+interface SVGPathComponent {
+  getPointAt(t: number): Coords;
+  asCommand(includeInitialMove: boolean): string;
+  readonly length: number;
+}
+
+class SVGLineSegment implements SVGPathComponent {
+  p1: Coords;
+  p2: Coords;
+  constructor(p1: Coords, p2: Coords) {
+    this.p1 = p1;
+    this.p2 = p2;
+  }
+  asCommand(includeInitialMove: boolean = false): string {
+    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
+      `L ${this.p2.x} ${this.p2.y}`);
+  }
+  get length() {
+    return distance(this.p1, this.p2);
+  }
+  getPointAt(t: number): Coords {
+    return {
+      x: this.p1.x + t * (this.p2.x - this.p1.x),
+      y: this.p1.y + t * (this.p2.y - this.p1.y)
+    }
+  }
+}
+
+class SVGCurveSegment implements SVGPathComponent {
+  p1: Coords;
+  p2: Coords;
+  controlPoint: Coords;
+  curve: Bezier;
+  constructor(p1: Coords, p2: Coords, controlPoint: Coords) {
+    this.p1 = p1;
+    this.p2 = p2;
+    this.controlPoint = controlPoint;
+    this.curve = new Bezier(p1, controlPoint, p2);
+  }
+  asCommand(includeInitialMove: boolean = false): string {
+    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
+      `Q ${this.controlPoint.x} ${this.controlPoint.y} ${this.p2.x} ${this.p2.y}`);
+  }
+  get length() {
+    return this.curve.length();
+  }
+  getPointAt(t: number): Coords {
+    return this.curve.get(t);
+  }
+}
+
 class PathData {
   icon: string;
   points: Coords[];
   bounds: BBox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
   smoothed: boolean;
   color: string;
+  svgComps: SVGPathComponent[];
 
   constructor(icon: string, color: string, points: Coords[], smoothed = false) {
     if (points.length < 1) {
@@ -254,35 +308,67 @@ class PathData {
         this.bounds.maxY = point.y;
       }
     }
+    this.svgComps = [];
+    if (!smoothed) {
+      for (let i = 0; i < points.length - 1; i++) {
+        this.svgComps.push(new SVGLineSegment(points[i], points[i + 1]));
+      }
+    } else {
+      let currentPoint = this.points[0];
+      for (let i = 1; i < this.points.length - 1; i++) {
+        const destinationPoint = this.points[i];
+        const currentLineLength = distance(currentPoint, destinationPoint);
+        const scaleThisLineBy = 1 - (40 / currentLineLength);
+        const lineTo = {
+          x: currentPoint.x + scaleThisLineBy * (destinationPoint.x - currentPoint.x),
+          y: currentPoint.y + scaleThisLineBy * (destinationPoint.y - currentPoint.y)
+        };
+        this.svgComps.push(new SVGLineSegment(this.points[i - 1], lineTo));
+        currentPoint = lineTo;
+        const pointAfterDestination = this.points[i + 1];
+        const nextLineLength = distance(destinationPoint, pointAfterDestination);
+        const scaleNextLineBy = 40 / nextLineLength;
+        const curveTo = {
+          x: destinationPoint.x + scaleNextLineBy * (pointAfterDestination.x - destinationPoint.x),
+          y: destinationPoint.y + scaleNextLineBy * (pointAfterDestination.y - destinationPoint.y)
+        };
+        this.svgComps.push(new SVGCurveSegment(currentPoint, curveTo, destinationPoint));
+        currentPoint = curveTo;
+      }
+      const lastPoint = this.points[this.points.length - 1];
+      this.svgComps.push(new SVGLineSegment(currentPoint, lastPoint));
+    }
   }
 
   get length(): number {
-    let result = 0;
-    for (let i = 1; i < this.points.length; i++) {
-      const p1 = this.points[i - 1];
-      const p2 = this.points[i];
-      result += distance(p1, p2);
-    }
-    return result;
+    return this.svgComps.reduce((previous, current) => previous + current.length, 0);
   }
 
-  getPoints(howMany: number): Coords[] {
+  toCommands(): string {
+    return this.svgComps.map((c, i) => c.asCommand(i == 0)).join(" ");
+  }
+
+  getAccentPoints(spaceBetween: number): Coords[] {
     const result: Coords[] = [];
     let initialSpace = 0;
-    const spacing = this.length / howMany;
     for (let i = 1; i < this.points.length; i++) {
       const from = this.points[i - 1];
       const to = this.points[i];
       const lineLength = distance(from, to);
-      const pointsInLine = Math.round((lineLength - initialSpace) / spacing);
+      const pointsInLine = Math.round((lineLength - initialSpace) / spaceBetween);
       for (let j = 0; j < pointsInLine; j++) {
         const lineProgress = j / pointsInLine + initialSpace / lineLength;
         result.push({ x: from.x + (lineProgress * (to.x - from.x)), y: from.y + (lineProgress * (to.y - from.y)) });
       }
-      initialSpace = (pointsInLine * spacing + initialSpace) % spacing;
+      initialSpace = (pointsInLine * spaceBetween + initialSpace) % spaceBetween;
     }
     return result;
   }
+
+  get darkColor(): string {
+    return chroma(this.color).darken(2).hex();
+  }
+
 }
 
 interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {

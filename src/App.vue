@@ -47,7 +47,7 @@
             <MapOverlay
                 :islands="collage.islands"
                 :outliningSubMaps="outliningSubMaps"
-                :fadingOutBGMaps="outliningSubMaps || highlightingMap || showingPaths"
+                :fadingOutBGMaps="(outliningSubMaps || highlightingMap) && !showingPaths"
                 :highlightingPaths="showingPaths"
                 :paths="paths"
             />
@@ -77,7 +77,6 @@
                 :initiallyActive="location.x == 64 && location.y == 64"
                 :permanentlyOn="showingPaths && location.pathMarker"
             />
-            <PathsOverlay v-if="showingPaths" :collage="collage" :paths="paths" />
         </div>
         <div id="cornerModal">
             <span
@@ -167,11 +166,11 @@ import { Position, Dimensions, clamp, getEdgeLength, distance } from "./Types.ts
 import MapCollage from "./MapCollage";
 import Island from "./Island";
 import paths from "./mapdata/paths";
-import { MapOverlay, MapUnderlay, PathsOverlay } from "./Overlays";
+import { MapOverlay, MapUnderlay } from "./Overlays";
 
 export default {
     name: "App",
-    components: { MapMarker, MapOverlay, MapUnderlay, PathsOverlay },
+    components: { MapMarker, MapOverlay, MapUnderlay },
     data: () => ({
         paths: Object.freeze(paths),
         collage: null, // MapCollage object instantiated in "created" hook
