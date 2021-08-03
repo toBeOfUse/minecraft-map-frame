@@ -134,13 +134,13 @@
                     </span>
                     <span>
                         <input
-                            id="paths"
+                            id="pathsCheckbox"
                             type="checkbox"
                             value="paths"
                             v-model="showingPaths"
                             :disabled="zoomLevel == 0"
                         />
-                        <label for="paths">Paths</label>
+                        <label for="pathsCheckbox">Paths</label>
                     </span>
                 </div>
             </div>
