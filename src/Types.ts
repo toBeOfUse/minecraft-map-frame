@@ -231,6 +231,8 @@ interface SVGPathComponent {
   getPointAt(t: number): Coords;
   asCommand(includeInitialMove: boolean): string;
   readonly length: number;
+  p1: Coords;
+  p2: Coords;
 }
 
 class SVGLineSegment implements SVGPathComponent {
@@ -248,6 +250,9 @@ class SVGLineSegment implements SVGPathComponent {
     return distance(this.p1, this.p2);
   }
   getPointAt(t: number): Coords {
+    if (t < 0 || t > 1) {
+      throw "calling getPointAt in SVGLineSegment with invalid t: " + t;
+    }
     return {
       x: this.p1.x + t * (this.p2.x - this.p1.x),
       y: this.p1.y + t * (this.p2.y - this.p1.y)
@@ -274,6 +279,9 @@ class SVGCurveSegment implements SVGPathComponent {
     return this.curve.length();
   }
   getPointAt(t: number): Coords {
+    if (t < 0 || t > 1) {
+      throw "calling getPointAt in SVGCurveSegment with invalid t: " + t;
+    }
     return this.curve.get(t);
   }
 }
@@ -350,17 +358,39 @@ class PathData {
 
   getAccentPoints(spaceBetween: number): Coords[] {
     const result: Coords[] = [];
-    let initialSpace = 0;
-    for (let i = 1; i < this.points.length; i++) {
-      const from = this.points[i - 1];
-      const to = this.points[i];
-      const lineLength = distance(from, to);
-      const pointsInLine = Math.round((lineLength - initialSpace) / spaceBetween);
-      for (let j = 0; j < pointsInLine; j++) {
-        const lineProgress = j / pointsInLine + initialSpace / lineLength;
-        result.push({ x: from.x + (lineProgress * (to.x - from.x)), y: from.y + (lineProgress * (to.y - from.y)) });
+
+    if (!this.smoothed) {
+      for (const comp of this.svgComps) {
+        result.push(comp.p1);
+        const extraPoints = Math.floor(comp.length / spaceBetween) - 1;
+        if (extraPoints > 0) {
+          const extraPointsLength = (extraPoints - 1) * spaceBetween;
+          const startingDistance = (comp.length - extraPointsLength) / 2;
+          const startingT = startingDistance / comp.length;
+          for (let i = 0; i < extraPoints; i++) {
+            result.push(comp.getPointAt(startingT + (i * spaceBetween / comp.length)));
+          }
+        }
+        result.push(comp.p2);
       }
-      initialSpace = (pointsInLine * spaceBetween + initialSpace) % spaceBetween;
+    } else {
+      let currentCompIndex = 0;
+      let lengthOfPreviousComps = 0;
+      const howManyPoints = Math.floor(this.length / spaceBetween);
+      for (let i = 0; i < howManyPoints; i++) {
+        const t = i / howManyPoints;
+        const lengthAtT = t * this.length;
+        let currentComp = this.svgComps[currentCompIndex];
+        let tForThisComp = (lengthAtT - lengthOfPreviousComps) / currentComp.length;
+        while (tForThisComp > 1) {
+          lengthOfPreviousComps += currentComp.length;
+          currentCompIndex++;
+          currentComp = this.svgComps[currentCompIndex];
+          tForThisComp = (lengthAtT - lengthOfPreviousComps) / currentComp.length;
+        }
+        result.push(currentComp.getPointAt(tForThisComp));
+      }
+      result.push(this.points[this.points.length - 1]);
     }
     return result;
   }

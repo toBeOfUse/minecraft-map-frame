@@ -332,11 +332,15 @@ const MapPath = tsx.component({
     },
     render(createElement, context) {
         const path = context.props.path;
+        const pathWidth = 20; // width of the path including the outline
+        const outlineWidth = 5;
+        const circleRadius = 25;
+        const iconWidth = 40;
         return [
             <path
                 fill="none"
                 stroke={path.darkColor}
-                stroke-width="20"
+                stroke-width={pathWidth}
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 d={path.toCommands()}
@@ -347,16 +351,16 @@ const MapPath = tsx.component({
                     <circle
                         cx={p.x}
                         cy={p.y}
-                        r="20"
+                        r={circleRadius}
                         fill={path.color}
                         stroke={path.darkColor}
-                        stroke-width="2.5"
+                        stroke-width={outlineWidth / 2}
                     />
                 )),
             <path
                 fill="none"
                 stroke={path.color}
-                stroke-width="15"
+                stroke-width={pathWidth - outlineWidth}
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 d={path.toCommands()}
@@ -364,7 +368,13 @@ const MapPath = tsx.component({
             ...path
                 .getAccentPoints(200)
                 .map(p => (
-                    <image href={path.icon} x={p.x - 16} y={p.y - 16} width="32" height="32" />
+                    <image
+                        href={path.icon}
+                        x={p.x - iconWidth / 2}
+                        y={p.y - iconWidth / 2}
+                        width={iconWidth}
+                        height={iconWidth}
+                    />
                 ))
         ];
     }
@@ -454,24 +464,6 @@ const MapOverlay = tsx.component({
         for (const island of p.islands[0].items) {
             mask.push(<IslandMask fill="black" island={island} />);
         }
-        // const pathMask = [<IslandMask island={level3Island} fill="white" />].concat(
-        //     p.paths.map(path => (
-        //         <path
-        //             stroke="black"
-        //             stroke-width="65"
-        //             fill="none"
-        //             d={
-        //                 `M ${path.points[0].x},${path.points[0].y} ` +
-        //                 path.points
-        //                     .slice(1)
-        //                     .map(p => `L ${p.x},${p.y}`)
-        //                     .join(" ")
-        //             }
-        //             stroke-linejoin="round"
-        //             filter={path.smoothed ? "url(#blur)" : ""}
-        //         />
-        //     ))
-        // );
         return (
             <SVGContainer islands={p.islands} id="overlay">
                 <defs>
