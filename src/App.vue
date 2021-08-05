@@ -205,6 +205,7 @@ export default {
         scaleFactor: 1,
         maxScaleFactor: 1.5,
         minScaleFactor: 0.25,
+        poiChangeScaleFactor: 0.5,
         debug: "",
         showingPaths: false
     }),
@@ -765,7 +766,7 @@ export default {
             }
         },
         scaleFactor(newValue, oldValue) {
-            const inflectionPoint = 0.5;
+            const inflectionPoint = this.poiChangeScaleFactor;
             if (
                 newValue < inflectionPoint &&
                 oldValue > inflectionPoint &&
@@ -785,6 +786,12 @@ export default {
         showingPaths(newValue, oldValue) {
             if (newValue && !oldValue) {
                 this.allowedPOITypes = [];
+            } else if (!newValue && oldValue) {
+                if (this.scaleFactor > this.poiChangeScaleFactor) {
+                    this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
+                } else {
+                    this.allowedPOITypes = ["biome"];
+                }
             }
         }
     },
