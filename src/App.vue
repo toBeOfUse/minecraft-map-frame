@@ -175,8 +175,6 @@ export default {
         paths: Object.freeze(paths),
         collage: null, // MapCollage object instantiated in "created" hook
         deployed: window.location.protocol == "https:",
-        mouseX: 0,
-        mouseY: 0,
         zoomLevel: 3, // currently can be only either 0 or 3
         isMidZoom: false,
         fullMapPos: new Position(NaN, NaN), // properly set in "created" hook
@@ -379,15 +377,6 @@ export default {
             }
         },
         handlePointerMove(event) {
-            if (!this.deployed) {
-                const eventPos = this.collage.getCoordsWithinCollageFromViewportPos(
-                    new Position(event.clientX, event.clientY),
-                    this.fullMapPos
-                );
-                this.mouseX = eventPos.x;
-                this.mouseY = eventPos.y;
-            }
-
             if (this.panning) {
                 event.preventDefault();
                 let newX, newY;
