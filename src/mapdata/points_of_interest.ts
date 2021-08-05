@@ -211,12 +211,6 @@ pois[0] = {
             type: Normal
         },
         {
-            x: 840.28,
-            y: 408.45,
-            text: "slime farm farm",
-            type: Monsters
-        },
-        {
             x: 2378.01,
             y: -1337.17,
             text: "sarah's vacation home",
@@ -239,7 +233,13 @@ pois[0] = {
             y: -1295,
             text: "item sorter interface",
             type: Normal
-        }
+        },
+        {
+            x: 861.12,
+            y: 455.44,
+            text: "remy's front entrance",
+            type: Mining
+        },
     ].map(p => new PointOfInterest(p, 0))
 };
 
@@ -277,12 +277,6 @@ pois[3] = {
             y: 383.04,
             text: "swamp 👀",
             type: Biome
-        },
-        {
-            x: 861.12,
-            y: 455.44,
-            text: "remy's front entrance",
-            type: Mining
         },
         {
             x: 178.48,
@@ -1174,7 +1168,7 @@ pois[3] = {
         {
             x: 3657.53,
             y: -1665.32,
-            text: "REALLY cool potential mining mountain",
+            text: "cool cool mountain",
             type: Mining
         },
         {
@@ -1182,7 +1176,13 @@ pois[3] = {
             y: -1459.91,
             text: "floodburgh",
             type: Village
-        }
+        },
+        {
+            x: 840.28,
+            y: 408.45,
+            text: "slime farm farm",
+            type: Monsters
+        },
     ].map(p => new PointOfInterest(p, 3))
 };
 

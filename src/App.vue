@@ -47,7 +47,7 @@
             <MapOverlay
                 :islands="collage.islands"
                 :outliningSubMaps="outliningSubMaps"
-                :fadingOutBGMaps="(outliningSubMaps || highlightingMap) && !showingPaths"
+                :fadingOutBGMaps="outliningSubMaps || (highlightingMap && !showingPaths)"
                 :highlightingPaths="showingPaths"
                 :paths="paths"
             />
@@ -786,7 +786,7 @@ export default {
         showingPaths(newValue, oldValue) {
             if (newValue && !oldValue) {
                 this.allowedPOITypes = [];
-            } else if (!newValue && oldValue) {
+            } else if (!newValue && oldValue && !this.allowedPOITypes.length) {
                 if (this.scaleFactor > this.poiChangeScaleFactor) {
                     this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
                 } else {
