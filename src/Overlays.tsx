@@ -453,6 +453,12 @@ const MapUnderlay = tsx.component({
     }
 });
 
+const overlayCache = {
+    mask: undefined as undefined | VueTsxSupport.JSX.Element[],
+    outlines: undefined as undefined | VueTsxSupport.JSX.Element[],
+    paths: undefined as undefined | VueTsxSupport.JSX.Element[]
+};
+
 const MapOverlay = tsx.component({
     name: "MapOverlay",
     functional: true,
@@ -473,14 +479,26 @@ const MapOverlay = tsx.component({
     render(createElement, context) {
         const p = context.props;
         const level3Island = p.islands[3].items[0];
-        const mask = [<IslandMask island={level3Island} fill="white" />];
-        for (const island of p.islands[0].items) {
-            mask.push(<IslandMask fill="black" island={island} />);
+        if (!overlayCache.mask) {
+            const mask = [<IslandMask island={level3Island} fill="white" />];
+            for (const island of p.islands[0].items) {
+                mask.push(<IslandMask fill="black" island={island} />);
+            }
+            overlayCache.mask = mask;
         }
+
+        if (!overlayCache.outlines) {
+            overlayCache.outlines = p.islands[0].items.map(i => <IslandOutline island={i} />);
+        }
+
+        if (!overlayCache.paths) {
+            overlayCache.paths = context.props.paths.map(p => <MapPath path={p} />);
+        }
+
         return (
             <SVGContainer islands={p.islands} id="overlay">
                 <defs>
-                    <mask id="level0Islands">{mask}</mask>
+                    <mask id="level0Islands">{overlayCache.mask}</mask>
                     <filter id="netherBlur">
                         <feGaussianBlur in="SourceGraphic" stdDeviation="8" />
                     </filter>
@@ -492,10 +510,8 @@ const MapOverlay = tsx.component({
                         mask={p.outliningSubMaps ? "url(#level0Islands)" : ""}
                     />
                 ) : null}
-                {p.outliningSubMaps
-                    ? p.islands[0].items.map(i => <IslandOutline island={i} />)
-                    : null}
-                {p.highlightingPaths ? context.props.paths.map(p => <MapPath path={p} />) : null}
+                {p.outliningSubMaps ? overlayCache.outlines : null}
+                {p.highlightingPaths ? overlayCache.paths : null}
             </SVGContainer>
         );
     }
