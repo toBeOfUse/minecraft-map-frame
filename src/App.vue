@@ -184,7 +184,11 @@ export default {
         panning: false,
         lastPanningX: -1,
         lastPanningY: -1,
+        lastPanningDirection: { x: NaN, y: NaN },
+        lastPanningSpeed: 0,
+        lastPanningFrameTime: NaN,
         lastDistBetweenTouches: -1,
+        sliding: false,
         currentIsland: null,
         allowedPOITypes: ["normal", "village", "mining", "monsters"],
         poiTypesOnAutopilot: true,
@@ -446,10 +450,29 @@ export default {
                 }
                 const bounds = this.currentPanningBounds;
 
+                const oldFullMapPos = this.fullMapPos;
+
                 this.fullMapPos = new Position(
                     clamp(newX, bounds.lowerXBound, bounds.upperXBound),
                     clamp(newY, bounds.lowerYBound, bounds.upperYBound)
                 );
+
+                const panningVector = {
+                    x: this.fullMapPos.left - oldFullMapPos.left,
+                    y: this.fullMapPos.top - oldFullMapPos.top
+                };
+                const panningVectorLength = distance(panningVector, { x: 0, y: 0 });
+
+                this.lastPanningDirection = {
+                    x: panningVector.x / panningVectorLength,
+                    y: panningVector.y / panningVectorLength
+                };
+
+                if (!isNaN(this.lastPanningFrameTime)) {
+                    const frameDuration = performance.now() - this.lastPanningFrameTime;
+                    this.lastPanningSpeed = panningVectorLength / frameDuration;
+                }
+                this.lastPanningFrameTime = performance.now();
             }
         },
         handlePointerAdd(event) {
@@ -474,19 +497,61 @@ export default {
                 this.lastDistBetweenTouches = distance({ x: x1, y: y1 }, { x: x2, y: y2 });
             }
         },
+        executeSlide() {
+            let oldTime = performance.now();
+            const workFunction = currentTime => {
+                if (
+                    this.sliding &&
+                    !this.panning &&
+                    this.lastPanningSpeed &&
+                    !isNaN(this.lastPanningDirection.x) &&
+                    !isNaN(this.lastPanningDirection.y)
+                ) {
+                    const elapsedTime = currentTime - oldTime;
+                    oldTime = currentTime;
+                    const newPos = new Position(
+                        this.fullMapPos.left +
+                            this.lastPanningDirection.x * (this.lastPanningSpeed * elapsedTime),
+                        this.fullMapPos.top +
+                            this.lastPanningDirection.y * (this.lastPanningSpeed * elapsedTime)
+                    );
+                    const bounds = this.currentPanningBounds;
+                    this.fullMapPos = new Position(
+                        clamp(newPos.left, bounds.lowerXBound, bounds.upperXBound),
+                        clamp(newPos.top, bounds.lowerYBound, bounds.upperYBound)
+                    );
+                    this.lastPanningSpeed *= 0.9;
+                    if (this.lastPanningSpeed <= 0.05) {
+                        this.lastPanningSpeed = 0;
+                        this.sliding = false;
+                    } else {
+                        requestAnimationFrame(workFunction);
+                    }
+                }
+            };
+            requestAnimationFrame(workFunction);
+        },
         handlePointerRemove(event) {
-            if (event.type.startsWith("mouse") || event.touches?.length === 0) {
-                this.panning = false;
-            } else if (event.touches?.length === 1) {
-                this.lastPanningX = event.touches[0].pageX;
-                this.lastPanningY = event.touches[0].pageY;
+            if (this.panning) {
+                if (event.type.startsWith("mouse") || event.touches?.length === 0) {
+                    this.panning = false;
+                    this.sliding = true;
+                    this.executeSlide();
+                } else if (event.touches?.length === 1) {
+                    this.lastPanningX = event.touches[0].pageX;
+                    this.lastPanningY = event.touches[0].pageY;
+                }
             }
         },
         handleMapClick(event) {
             if (!this.deployed && navigator.clipboard) {
+                const eventPos = this.collage.getCoordsWithinCollageFromViewportPos(
+                    new Position(event.clientX, event.clientY),
+                    this.fullMapPos
+                );
                 const coords = `{
-                    x: ${this.mouseX.toFixed(2)},
-                    y: ${this.mouseY.toFixed(2)},
+                    x: ${eventPos.x.toFixed(2)},
+                    y: ${eventPos.y.toFixed(2)},
                     text: "",
                     type: Normal,
                 },`;
@@ -604,12 +669,13 @@ export default {
         },
         currentPanningBounds() {
             // break glass in case of debugging something completely different:
-            // return {
-            //     lowerXBound: -Infinity,
-            //     upperXBound: Infinity,
-            //     lowerYBound: -Infinity,
-            //     upperYBound: Infinity
-            // };
+            return {
+                lowerXBound: -Infinity,
+                upperXBound: Infinity,
+                lowerYBound: -Infinity,
+                upperYBound: Infinity
+            };
+            /*
 
             // translate the point at the center of the viewport into the map collage's
             // coordinate system
@@ -666,7 +732,7 @@ export default {
                 upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top)
             };
 
-            return result;
+            return result;*/
         },
         currentPointsOfInterest() {
             let narrowedDownPoints = [];
