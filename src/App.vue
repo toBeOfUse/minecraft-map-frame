@@ -311,6 +311,7 @@ export default {
             }
         },
         levelChange(newLevel, map) {
+            this.sliding = false;
             if (newLevel == 0) {
                 this.showingPaths = false;
                 if (!this.allowedPOITypes.length) {
@@ -480,6 +481,7 @@ export default {
                 return;
             }
             this.panning = true;
+            this.sliding = false;
             if (event.type.startsWith("mouse") || event.touches?.length == 1) {
                 this.lastPanningX = event.type.startsWith("mouse")
                     ? event.pageX
@@ -669,13 +671,12 @@ export default {
         },
         currentPanningBounds() {
             // break glass in case of debugging something completely different:
-            return {
-                lowerXBound: -Infinity,
-                upperXBound: Infinity,
-                lowerYBound: -Infinity,
-                upperYBound: Infinity
-            };
-            /*
+            // return {
+            //     lowerXBound: -Infinity,
+            //     upperXBound: Infinity,
+            //     lowerYBound: -Infinity,
+            //     upperYBound: Infinity
+            // };
 
             // translate the point at the center of the viewport into the map collage's
             // coordinate system
@@ -732,7 +733,7 @@ export default {
                 upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top)
             };
 
-            return result;*/
+            return result;
         },
         currentPointsOfInterest() {
             let narrowedDownPoints = [];
