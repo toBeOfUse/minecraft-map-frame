@@ -1,8 +1,7 @@
 import Island from "./Island";
 import { VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, CornerType, Corner, PathData, Position } from "./Types";
-import MapCollage from "./MapCollage";
+import { ItemsInLevel, Coords, CornerType, Corner, PathData } from "./Types";
 
 const MAP_BG = "#D6BF97";
 

@@ -537,26 +537,6 @@ export default {
                 this.isMidZoom = false;
             }
         },
-        getLevel3MapOpacity(map) {
-            return this.zoomLevel == 0
-                ? 0.3
-                : map.x == this.currentlyCenteredMap?.x && map.y == this.currentlyCenteredMap?.y
-                ? 1
-                : 0.7;
-        },
-        getOutlinePos() {
-            // position outline so it sticks out of the sides of the map so that maps
-            // on the edge can be outlined
-            const borderWidth = this.subMapBorderWidth;
-            const scaleFactor = this.zoomLevel == 3 ? 1 : 8;
-            return {
-                position: "absolute",
-                left: -borderWidth * scaleFactor + "px",
-                top: -borderWidth * scaleFactor + "px",
-                width: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)",
-                height: "calc(100% + " + borderWidth * 2 * scaleFactor + "px)"
-            };
-        },
         getMinecraftCoordinates(map) {
             const edge = getEdgeLength(this.zoomLevel);
             return (
@@ -611,12 +591,6 @@ export default {
                 return "\n";
             }
         },
-        screenSizeInBlockUnits() {
-            return new Dimensions(
-                this.windowWidth / this.collage.pxPerBlock,
-                this.windowHeight / this.collage.pxPerBlock
-            );
-        },
         level3MapSizePx() {
             if (this.windowHeight > this.windowWidth) {
                 return 0.95 * this.windowWidth * this.scaleFactor * (this.zoomLevel == 0 ? 8 : 1);
@@ -626,23 +600,6 @@ export default {
         },
         level0MapSizePx() {
             return this.level3MapSizePx / 8;
-        },
-        subMapBorderWidth() {
-            // this is the width of the sub-map borders at the initial zoom level in
-            // pixels (it automatically becomes wider when we zoom in via the scaling
-            // of the svg outline overlay via css)
-            return 3;
-        },
-        mapViewBox() {
-            return (
-                this.collage.lowestMapCoords.x +
-                " " +
-                this.collage.lowestMapCoords.y +
-                " " +
-                (this.collage.highestMapCoords.x - this.collage.lowestMapCoords.x + 1024) +
-                " " +
-                (this.collage.highestMapCoords.y - this.collage.lowestMapCoords.y + 1024)
-            );
         },
         currentlyCenteredMap() {
             if (!this.collage) {
@@ -848,16 +805,6 @@ export default {
     transition-duration: 1s;
     transition-property: width, height, left, top, opacity, visibility;
 }
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.5s;
-}
-.fade-enter,
-.fade-leave-to {
-    opacity: 0;
-}
-
 html,
 body {
     margin: 0;
@@ -880,11 +827,6 @@ body {
 }
 .zoomTransition * {
     @include standard-transitions;
-}
-#cornerDisplay {
-    position: fixed;
-    left: 5px;
-    bottom: 5px;
 }
 #zoomButton {
     width: 25px;
