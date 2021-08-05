@@ -5,14 +5,19 @@ const paths: PathData[] = [
         { x: 172, y: 53 },
         { x: 2311, y: 53 },
         { x: 2311, y: -1326 }
-    ]),
+    ], false, true),
     new PathData(
         "/nether_oak_boat.png",
         "#451952",
         [
             { x: 2311, y: 53 },
+            { x: 2800.98, y: 53, },
+            { x: 2800, y: -177.09, },
+            { x: 3800, y: -177.09, },
+            { x: 3800, y: -667 },
             { x: 8950, y: -667 }
         ],
+        false,
         true
     ),
     new PathData("/oak_boat.png", "blue", [

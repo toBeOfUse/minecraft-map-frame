@@ -293,8 +293,9 @@ class PathData {
   smoothed: boolean;
   color: string;
   svgComps: SVGPathComponent[];
+  nether: boolean;
 
-  constructor(icon: string, color: string, points: Coords[], smoothed = false) {
+  constructor(icon: string, color: string, points: Coords[], smoothed = false, nether = false) {
     if (points.length < 1) {
       throw "Cannot initialize path with empty points array";
     }
@@ -302,6 +303,7 @@ class PathData {
     this.points = points;
     this.smoothed = smoothed;
     this.color = color;
+    this.nether = nether;
     for (const point of points) {
       if (point.x < this.bounds.minX) {
         this.bounds.minX = point.x;

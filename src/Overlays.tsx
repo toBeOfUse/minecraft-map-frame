@@ -336,6 +336,20 @@ const MapPath = tsx.component({
         const outlineWidth = 5;
         const circleRadius = 25;
         const iconWidth = 40;
+        if (path.nether) {
+            return (
+                <path
+                    fill="none"
+                    stroke={path.color}
+                    opacity="0.4"
+                    stroke-width={pathWidth * 3}
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    filter="url(#netherBlur)"
+                    d={path.toCommands()}
+                />
+            );
+        }
         return [
             <path
                 fill="none"
@@ -468,6 +482,9 @@ const MapOverlay = tsx.component({
             <SVGContainer islands={p.islands} id="overlay">
                 <defs>
                     <mask id="level0Islands">{mask}</mask>
+                    <filter id="netherBlur">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="8" />
+                    </filter>
                 </defs>
                 {p.fadingOutBGMaps ? (
                     <IslandMask
