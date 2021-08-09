@@ -1,7 +1,7 @@
 import Island from "./Island";
 import { VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, CornerType, Corner, PathData } from "./Types";
+import { ItemsInLevel, Coords, CornerType, Corner, PathData, SVGCubicCurveSegment } from "./Types";
 
 const MAP_BG = "#D6BF97";
 
@@ -349,6 +349,15 @@ const MapPath = tsx.component({
                 />
             );
         }
+        const debug = [];
+        if (path.svgComps[0] instanceof SVGCubicCurveSegment) {
+            const comps = path.svgComps as SVGCubicCurveSegment[];
+            for (const comp of comps) {
+                debug.push(<circle cx={comp.c1.x} cy={comp.c1.y} r="10" fill="black" />);
+                debug.push(<circle cx={comp.c2.x} cy={comp.c2.y} r="10" fill="blue" />);
+                debug.push(<circle cx={comp.p2.x} cy={comp.p2.y} r="10" fill="red" />);
+            }
+        }
         return [
             <path
                 fill="none"
@@ -389,6 +398,7 @@ const MapPath = tsx.component({
                         height={iconWidth}
                     />
                 ))
+            //...debug
         ];
     }
 });

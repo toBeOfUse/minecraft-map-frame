@@ -260,7 +260,7 @@ class SVGLineSegment implements SVGPathComponent {
   }
 }
 
-class SVGCurveSegment implements SVGPathComponent {
+class SVGQuadraticCurveSegment implements SVGPathComponent {
   p1: Coords;
   p2: Coords;
   controlPoint: Coords;
@@ -280,7 +280,35 @@ class SVGCurveSegment implements SVGPathComponent {
   }
   getPointAt(t: number): Coords {
     if (t < 0 || t > 1) {
-      throw "calling getPointAt in SVGCurveSegment with invalid t: " + t;
+      throw "calling getPointAt in SVGQuadraticCurveSegment with invalid t: " + t;
+    }
+    return this.curve.get(t);
+  }
+}
+
+class SVGCubicCurveSegment implements SVGPathComponent {
+  p1: Coords;
+  c1: Coords;
+  p2: Coords;
+  c2: Coords;
+  curve: Bezier;
+  constructor(p1: Coords, c1: Coords, p2: Coords, c2: Coords) {
+    this.p1 = p1;
+    this.c1 = c1;
+    this.p2 = p2;
+    this.c2 = c2;
+    this.curve = new Bezier(p1, c1, c2, p2);
+  }
+  asCommand(includeInitialMove: boolean = false): string {
+    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
+      `C ${this.c1.x} ${this.c1.y} ${this.c2.x} ${this.c2.y} ${this.p2.x} ${this.p2.y}`);
+  }
+  get length() {
+    return this.curve.length();
+  }
+  getPointAt(t: number): Coords {
+    if (t < 0 || t > 1) {
+      throw "calling getPointAt in SVGCubicCurveSegment with invalid t: " + t;
     }
     return this.curve.get(t);
   }
@@ -324,29 +352,37 @@ class PathData {
         this.svgComps.push(new SVGLineSegment(points[i], points[i + 1]));
       }
     } else {
-      let currentPoint = this.points[0];
-      for (let i = 1; i < this.points.length - 1; i++) {
-        const destinationPoint = this.points[i];
-        const currentLineLength = distance(currentPoint, destinationPoint);
-        const scaleThisLineBy = 1 - (40 / currentLineLength);
-        const lineTo = {
-          x: currentPoint.x + scaleThisLineBy * (destinationPoint.x - currentPoint.x),
-          y: currentPoint.y + scaleThisLineBy * (destinationPoint.y - currentPoint.y)
+      let lastControlPoint = this.points[0];
+      for (let i = 1; i < this.points.length; i++) {
+        const p1 = this.points[i - 1];
+        const p2 = this.points[i];
+        // get the first control point by mirroring the last control point through
+        // the first on-curve point
+        const c1: Coords = {
+          x: p1.x - lastControlPoint.x + p1.x,
+          y: p1.y - lastControlPoint.y + p1.y
         };
-        this.svgComps.push(new SVGLineSegment(this.points[i - 1], lineTo));
-        currentPoint = lineTo;
-        const pointAfterDestination = this.points[i + 1];
-        const nextLineLength = distance(destinationPoint, pointAfterDestination);
-        const scaleNextLineBy = 40 / nextLineLength;
-        const curveTo = {
-          x: destinationPoint.x + scaleNextLineBy * (pointAfterDestination.x - destinationPoint.x),
-          y: destinationPoint.y + scaleNextLineBy * (pointAfterDestination.y - destinationPoint.y)
-        };
-        this.svgComps.push(new SVGCurveSegment(currentPoint, curveTo, destinationPoint));
-        currentPoint = curveTo;
+        let c2;
+        if (i < this.points.length - 1) {
+          const nextPoint = this.points[i + 1];
+          // vector that points from p2 to p1
+          const vector1 = { x: p1.x - p2.x, y: p1.y - p2.y };
+          // vector that points from the next point to p2
+          const vector2 = { x: p2.x - nextPoint.x, y: p2.y - nextPoint.y };
+          let controlPointVector = { x: (vector1.x + vector2.x) / 2, y: (vector1.y + vector2.y) / 2 };
+          const cpvLength = distance(controlPointVector, { x: 0, y: 0 });
+          controlPointVector = { x: controlPointVector.x / cpvLength, y: controlPointVector.y / cpvLength };
+          controlPointVector = { x: controlPointVector.x * 50, y: controlPointVector.y * 50 };
+          c2 = {
+            x: p2.x + controlPointVector.x,
+            y: p2.y + controlPointVector.y
+          }
+        } else {
+          c2 = p2;
+        }
+        lastControlPoint = c2;
+        this.svgComps.push(new SVGCubicCurveSegment(p1, c1, p2, c2));
       }
-      const lastPoint = this.points[this.points.length - 1];
-      this.svgComps.push(new SVGLineSegment(currentPoint, lastPoint));
     }
   }
 
@@ -452,5 +488,6 @@ export {
   Line,
   Shape,
   ItemsInLevel,
-  PathData
+  PathData,
+  SVGCubicCurveSegment
 };
