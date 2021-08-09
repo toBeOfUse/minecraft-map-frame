@@ -190,7 +190,7 @@ export default {
         lastDistBetweenTouches: -1,
         sliding: false,
         currentIsland: null,
-        allowedPOITypes: ["normal", "village", "mining", "monsters"],
+        allowedPOITypes: ["normal", "village", "mining", "monsters", "biome"],
         poiTypesOnAutopilot: true,
         poiFilter: "byProximity", // or "byIsland" or "allIslands"
         captionCoverageIndex: new RBush(),
@@ -836,7 +836,7 @@ export default {
                 this.poiTypesOnAutopilot &&
                 this.zoomLevel == 3
             ) {
-                this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
+                this.allowedPOITypes = ["normal", "village", "mining", "monsters", "biome"];
             }
         },
         showingPaths(newValue, oldValue) {
@@ -844,7 +844,7 @@ export default {
                 this.allowedPOITypes = [];
             } else if (!newValue && oldValue && !this.allowedPOITypes.length) {
                 if (this.scaleFactor > this.poiChangeScaleFactor) {
-                    this.allowedPOITypes = ["normal", "village", "mining", "monsters"];
+                    this.allowedPOITypes = ["normal", "village", "mining", "monsters", "biome"];
                 } else {
                     this.allowedPOITypes = ["biome"];
                 }
