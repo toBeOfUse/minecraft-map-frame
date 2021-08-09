@@ -1183,6 +1183,84 @@ pois[3] = {
             text: "slime farm farm",
             type: Monsters
         },
+        {
+            x: 9747.76,
+            y: -819.96,
+            text: "underground jungle ravine",
+            type: Mining,
+        },
+        {
+            x: 9796.24,
+            y: -781.18,
+            text: "jungle temple",
+            type: Monsters,
+        },
+        {
+            x: 9096.27,
+            y: -592.11,
+            text: "the Abyss",
+            type: Normal,
+        },
+        {
+            x: 4780.79,
+            y: -1055.88,
+            text: "coral field",
+            type: Biome,
+        },
+        {
+            x: 4483.08,
+            y: -1082.14,
+            text: "normal ravine",
+            type: Mining,
+        },
+        {
+            x: 4938.40,
+            y: -2027.81,
+            text: "mystery swamp",
+            type: Biome,
+        },
+        {
+            x: 3925.61,
+            y: -218.21,
+            text: "crystal cave",
+            type: Mining,
+        },
+        {
+            x: 4124.04,
+            y: -1470.33,
+            text: "zombie spawner",
+            type: Monsters,
+        },
+        {
+            x: 4955.87,
+            y: -110.21,
+            text: "mushroom island",
+            type: Biome,
+        },
+        {
+            x: 5002.57,
+            y: -8.06,
+            text: "mushroom island ravine (partially plumbed)",
+            type: Mining,
+        },
+        {
+            x: 4617.30,
+            y: -915.78,
+            text: "even more coral (a lot)",
+            type: Biome,
+        },
+        {
+            x: 3077.64,
+            y: -2023.12,
+            text: "skeletman spawner",
+            type: Monsters,
+        },
+        {
+            x: 6658.34,
+            y: -525.62,
+            text: "Mystery Zone",
+            type: Normal,
+        },
     ].map(p => new PointOfInterest(p, 3))
 };
 
