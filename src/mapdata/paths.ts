@@ -1,19 +1,25 @@
 import { PathData } from "../Types";
 
 const paths: PathData[] = [
-    new PathData("/nether_oak_boat.png", "#451952", [
-        { x: 172, y: 53 },
-        { x: 2311, y: 53 },
-        { x: 2311, y: -1326 }
-    ], false, true),
+    new PathData(
+        "/nether_oak_boat.png",
+        "#451952",
+        [
+            { x: 172, y: 53 },
+            { x: 2311, y: 53 },
+            { x: 2311, y: -1326 }
+        ],
+        false,
+        true
+    ),
     new PathData(
         "/nether_oak_boat.png",
         "#451952",
         [
             { x: 2311, y: 53 },
-            { x: 2800.98, y: 53, },
-            { x: 2800, y: -177.09, },
-            { x: 3800, y: -177.09, },
+            { x: 2800.98, y: 53 },
+            { x: 2800, y: -177.09 },
+            { x: 3800, y: -177.09 },
             { x: 3800, y: -667 },
             { x: 8950, y: -667 }
         ],
@@ -38,7 +44,8 @@ const paths: PathData[] = [
         { x: -1106, y: -57 }
     ]),
     new PathData(
-        "/lilypad.png", "#258a40",
+        "/lilypad.png",
+        "#258a40",
         [
             { x: 654.42, y: 448.04 },
             { x: 589.75, y: 318.78 },
@@ -50,7 +57,7 @@ const paths: PathData[] = [
             { x: 2351.07, y: -1216.22, },
         ],
         true
-    ),
+    )
 ];
 
 export default paths;

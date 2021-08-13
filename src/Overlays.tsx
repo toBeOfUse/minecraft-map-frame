@@ -331,7 +331,7 @@ const MapPath = tsx.component({
     },
     render(createElement, context) {
         const path = context.props.path;
-        const pathWidth = 20; // width of the path including the outline
+        const pathWidth = 25; // width of the path including the outline
         const outlineWidth = 5;
         const circleRadius = 25;
         const iconWidth = 40;
@@ -350,12 +350,18 @@ const MapPath = tsx.component({
             );
         }
         const debug = [];
-        if (path.svgComps[0] instanceof SVGCubicCurveSegment) {
-            const comps = path.svgComps as SVGCubicCurveSegment[];
+        if (path.svgComps[1] instanceof SVGCubicCurveSegment) {
+            for (const point of path.points) {
+                debug.push(<circle cx={point.x} cy={point.y} r="5" fill="red" opacity="0.6" />);
+            }
+            const comps = path.svgComps.slice(1, -1) as SVGCubicCurveSegment[];
             for (const comp of comps) {
-                debug.push(<circle cx={comp.c1.x} cy={comp.c1.y} r="10" fill="black" />);
-                debug.push(<circle cx={comp.c2.x} cy={comp.c2.y} r="10" fill="blue" />);
-                debug.push(<circle cx={comp.p2.x} cy={comp.p2.y} r="10" fill="red" />);
+                debug.push(
+                    <circle cx={comp.c1.x} cy={comp.c1.y} r="5" fill="black" opacity="0.6" />
+                );
+                debug.push(
+                    <circle cx={comp.c2.x} cy={comp.c2.y} r="5" fill="blue" opacity="0.6" />
+                );
             }
         }
         return [
@@ -398,7 +404,7 @@ const MapPath = tsx.component({
                         height={iconWidth}
                     />
                 ))
-            //...debug
+            // ...debug
         ];
     }
 });

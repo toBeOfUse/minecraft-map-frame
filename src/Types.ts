@@ -352,15 +352,19 @@ class PathData {
         this.svgComps.push(new SVGLineSegment(points[i], points[i + 1]));
       }
     } else {
-      let lastControlPoint = this.points[0];
+      // note: this vector needs to be normalized so we can set its length easily
+      let lastControlPointVector = { x: 0, y: 0 };
       for (let i = 1; i < this.points.length; i++) {
         const p1 = this.points[i - 1];
         const p2 = this.points[i];
-        // get the first control point by mirroring the last control point through
-        // the first on-curve point
+        // get the first control point by taking the mirror image of the vector to
+        // the previous control point and lengthening it according to how much ground
+        // this curve has to cover
+        const lineSegmentLength = distance(p1, p2);
+        const controlPointDistance = lineSegmentLength / 4;
         const c1: Coords = {
-          x: p1.x - lastControlPoint.x + p1.x,
-          y: p1.y - lastControlPoint.y + p1.y
+          x: p1.x + (-lastControlPointVector.x * controlPointDistance),
+          y: p1.y + (-lastControlPointVector.y * controlPointDistance)
         };
         let c2;
         if (i < this.points.length - 1) {
@@ -369,10 +373,14 @@ class PathData {
           const vector1 = { x: p1.x - p2.x, y: p1.y - p2.y };
           // vector that points from the next point to p2
           const vector2 = { x: p2.x - nextPoint.x, y: p2.y - nextPoint.y };
-          let controlPointVector = { x: (vector1.x + vector2.x) / 2, y: (vector1.y + vector2.y) / 2 };
-          const cpvLength = distance(controlPointVector, { x: 0, y: 0 });
-          controlPointVector = { x: controlPointVector.x / cpvLength, y: controlPointVector.y / cpvLength };
-          controlPointVector = { x: controlPointVector.x * 50, y: controlPointVector.y * 50 };
+          const middleVector = { x: (vector1.x + vector2.x) / 2, y: (vector1.y + vector2.y) / 2 };
+          const mvLength = distance(middleVector, { x: 0, y: 0 });
+          const normalizedCPV = { x: middleVector.x / mvLength, y: middleVector.y / mvLength };
+          lastControlPointVector = normalizedCPV;
+          const controlPointVector = {
+            x: normalizedCPV.x * controlPointDistance,
+            y: normalizedCPV.y * controlPointDistance
+          };
           c2 = {
             x: p2.x + controlPointVector.x,
             y: p2.y + controlPointVector.y
@@ -380,8 +388,11 @@ class PathData {
         } else {
           c2 = p2;
         }
-        lastControlPoint = c2;
-        this.svgComps.push(new SVGCubicCurveSegment(p1, c1, p2, c2));
+        if (i == 0 || i == this.points.length - 1) {
+          this.svgComps.push(new SVGLineSegment(p1, p2));
+        } else {
+          this.svgComps.push(new SVGCubicCurveSegment(p1, c1, p2, c2));
+        }
       }
     }
   }
