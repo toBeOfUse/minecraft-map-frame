@@ -239,7 +239,7 @@ pois[0] = {
             y: 455.44,
             text: "remy's front entrance",
             type: Mining
-        },
+        }
     ].map(p => new PointOfInterest(p, 0))
 };
 
@@ -528,8 +528,14 @@ pois[3] = {
         {
             x: 1644.08,
             y: 766.4,
-            text: "east village",
+            text: "border town",
             type: Village
+        },
+        {
+            x: 1797.11,
+            y: 799.14,
+            text: "stronghold hill",
+            type: Normal
         },
         {
             x: 2001.2,
@@ -1187,80 +1193,80 @@ pois[3] = {
             x: 9747.76,
             y: -819.96,
             text: "underground jungle ravine",
-            type: Mining,
+            type: Mining
         },
         {
             x: 9796.24,
             y: -781.18,
             text: "jungle temple",
-            type: Monsters,
+            type: Monsters
         },
         {
             x: 9096.27,
             y: -592.11,
             text: "the Abyss",
-            type: Normal,
+            type: Normal
         },
         {
             x: 4780.79,
             y: -1055.88,
             text: "coral field",
-            type: Biome,
+            type: Biome
         },
         {
             x: 4483.08,
             y: -1082.14,
             text: "normal ravine",
-            type: Mining,
+            type: Mining
         },
         {
-            x: 4938.40,
+            x: 4938.4,
             y: -2027.81,
             text: "mystery swamp",
-            type: Biome,
+            type: Biome
         },
         {
             x: 3925.61,
             y: -218.21,
             text: "crystal cave",
-            type: Mining,
+            type: Mining
         },
         {
             x: 4124.04,
             y: -1470.33,
             text: "zombie spawner",
-            type: Monsters,
+            type: Monsters
         },
         {
             x: 4955.87,
             y: -110.21,
             text: "mushroom island",
-            type: Biome,
+            type: Biome
         },
         {
             x: 5002.57,
             y: -8.06,
             text: "mushroom island ravine (partially plumbed)",
-            type: Mining,
+            type: Mining
         },
         {
-            x: 4617.30,
+            x: 4617.3,
             y: -915.78,
             text: "even more coral (a lot)",
-            type: Biome,
+            type: Biome
         },
         {
             x: 3077.64,
             y: -2023.12,
             text: "skeletman spawner",
-            type: Monsters,
+            type: Monsters
         },
         {
             x: 6658.34,
             y: -525.62,
             text: "Mystery Zone",
-            type: Normal,
-        },
+            type: Normal
+        }
     ].map(p => new PointOfInterest(p, 3))
 };
 
