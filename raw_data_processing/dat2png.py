@@ -8,16 +8,16 @@ placing metadata about them in a json file in the "src/mapdata" directory."""
 
 import pyximport
 pyximport.install()
-from fast_nbt_convert import convert
 
-from argparse import ArgumentParser
-from base64 import urlsafe_b64encode as b64
-from hashlib import blake2b
-from collections import defaultdict
-import re
-from pathlib import Path
-import json
 from PIL import Image
+import json
+from pathlib import Path
+import re
+from collections import defaultdict
+from hashlib import blake2b
+from base64 import urlsafe_b64encode as b64
+from argparse import ArgumentParser
+from fast_nbt_convert import convert
 
 
 def get_coords_string(map_info):
@@ -56,6 +56,9 @@ def process_all(raw_data_path):
             continue
 
         map_data = convert(str(file))
+        if (map_data["dimension"] != "minecraft:overworld"):
+            print("skipping non-overworld map "+str(file)+ " ("+map_data["dimension"]+")")
+            continue
 
         # side length in blocks of the relevant map
         side_length = 128*2**map_data["scale"]
@@ -105,7 +108,7 @@ def process_all(raw_data_path):
 
         print(f"PNGifying {len(maps)} level {scale_level[-1]} maps:")
         for i, final_map_data in enumerate(maps, start=1):
-            
+
             with open(final_map_data["temp_file"], "rb") as temp_image:
                 image_bytes = temp_image.read()
             image_hash = b64(blake2b(image_bytes, digest_size=12).digest()).decode("utf-8")

@@ -34,6 +34,9 @@ def nbt_search(unsigned char[:] nbt_bytes, unsigned char[] key, int key_length, 
     elif value_type == b"bytes":
         size = nbt_search(nbt_bytes, key, key_length, b"int")
         return nbt_bytes[pos+4:pos+4+size]
+    elif value_type == b"string":
+        size = int.from_bytes(nbt_bytes[pos:pos+2], byteorder="big", signed=False)
+        return nbt_bytes[pos+2:pos+2+size]
 
 
 def convert(str file_path):
@@ -41,6 +44,7 @@ def convert(str file_path):
         nbt_data = gzip.decompress(data_file.read())
     cdef nbt_array = array.array("B", nbt_data)
     cdef unsigned char[:] nbt_access = nbt_array
+    dimension = nbt_search(nbt_access, b'dimension', len('dimension'), b'string')
     map_scale = nbt_search(nbt_access, b'scale', len('scale'), b'byte')
     map_x_center = nbt_search(nbt_access, b'xCenter', len('xCenter'), b'int')
     map_z_center = nbt_search(nbt_access, b'zCenter', len('zCenter'), b'int')
@@ -71,4 +75,11 @@ def convert(str file_path):
     with open(output_file, "wb+") as output:
         output.write(rgba_color_data.tobytes())
     
-    return {"scale": map_scale, "blanks": blanks_encountered, "relative_x": map_x_center, "relative_z": map_z_center, "temp_file": output_file }
+    return {
+        "scale": map_scale,
+        "blanks": blanks_encountered,
+        "relative_x": map_x_center,
+        "relative_z": map_z_center,
+        "dimension": ''.join([chr(x) for x in dimension]),
+        "temp_file": output_file
+    }
