@@ -529,13 +529,15 @@ pois[3] = {
             x: 1644.08,
             y: 766.4,
             text: "border town",
-            type: Village
+            type: Village,
+            pathMarker: true
         },
         {
             x: 1797.11,
             y: 799.14,
             text: "stronghold hill",
-            type: Normal
+            type: Normal,
+            pathMarker: true
         },
         {
             x: 2001.2,

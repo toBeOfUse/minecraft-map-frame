@@ -528,6 +528,38 @@ const MapOverlay = tsx.component({
                 ) : null}
                 {p.outliningSubMaps ? overlayCache.outlines : null}
                 {p.highlightingPaths ? overlayCache.paths : null}
+                {/* stronghold zones: <circle
+                    cx="64"
+                    cy="64"
+                    r="2048"
+                    stroke="#aaaaaaaa"
+                    stroke-width="768"
+                    fill="transparent"
+                />
+                <circle
+                    cx="64"
+                    cy="64"
+                    r="5120"
+                    stroke="#aaaaaaaa"
+                    stroke-width="768"
+                    fill="transparent"
+                />
+                <circle
+                    cx="64"
+                    cy="64"
+                    r="8192"
+                    stroke="#aaaaaaaa"
+                    stroke-width="768"
+                    fill="transparent"
+                />
+                <circle
+                    cx="64"
+                    cy="64"
+                    r="11264"
+                    stroke="#aaaaaaaa"
+                    stroke-width="768"
+                    fill="transparent"
+                /> */}
             </SVGContainer>
         );
     }
