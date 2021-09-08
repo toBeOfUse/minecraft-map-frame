@@ -207,7 +207,7 @@ pois[0] = {
         {
             x: 50,
             y: -91,
-            text: "also a nether portal that leads to the vatican city path",
+            text: "sarah's portal to the highway",
             type: Normal
         },
         {
@@ -225,7 +225,7 @@ pois[0] = {
         {
             x: 2311.59,
             y: -1332.14,
-            text: "portal leading to a path to cuteville",
+            text: "portal to the nether superhighway",
             type: Normal
         },
         {
@@ -239,6 +239,12 @@ pois[0] = {
             y: 455.44,
             text: "remy's front entrance",
             type: Mining
+        },
+        {
+            x: 124.5,
+            y: 16.93,
+            text: "superhighway portal",
+            type: Normal
         }
     ].map(p => new PointOfInterest(p, 0))
 };
@@ -549,7 +555,7 @@ pois[3] = {
             x: -1093.47,
             y: -341.69,
             text: "desert pyramid (scared 2 touch)",
-            type: Normal
+            type: Mining
         },
         {
             x: 1595.45,
@@ -857,7 +863,7 @@ pois[3] = {
         {
             x: 2302.19,
             y: -2138.22,
-            text: "amethyst cave (deep) (beware: cave spiders)",
+            text: "amethyst cave (deep) (beware: venomous spiders)",
             type: Mining
         },
         {
@@ -930,12 +936,6 @@ pois[3] = {
             x: -881.35,
             y: -220.09,
             text: "there are straight-up a lot of caves in this area",
-            type: Normal
-        },
-        {
-            x: 169,
-            y: 53,
-            text: "nether portal - vatican city access",
             type: Normal
         },
         {
