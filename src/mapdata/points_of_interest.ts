@@ -245,6 +245,24 @@ pois[0] = {
             y: 16.93,
             text: "superhighway portal",
             type: Normal
+        },
+        {
+            x: 1605.47,
+            y: 754.42,
+            text: "superhighway portal",
+            type: Normal
+        },
+        {
+            x: 1606.62,
+            y: 731.71,
+            text: "flower path to russel village",
+            type: Normal
+        },
+        {
+            x: 1596.04,
+            y: 797.91,
+            text: "agriculture",
+            type: Normal
         }
     ].map(p => new PointOfInterest(p, 0))
 };
@@ -1267,6 +1285,12 @@ pois[3] = {
             x: 6658.34,
             y: -525.62,
             text: "Mystery Zone",
+            type: Normal
+        },
+        {
+            x: 1639.74,
+            y: 623.74,
+            text: "we eat wheat",
             type: Normal
         }
     ].map(p => new PointOfInterest(p, 3))
