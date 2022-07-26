@@ -1,9 +1,10 @@
 
 from base64 import urlsafe_b64encode as b64
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from hashlib import blake2b
 from typing import Optional
+from itertools import cycle
 
 
 @dataclass(order=True, frozen=True)
@@ -20,6 +21,9 @@ class MapSpacePoint:
 
     def __add__(self, other: "MapSpacePoint") -> "MapSpacePoint":
         return MapSpacePoint(self.x+other.x, self.y+other.y)
+    
+    def __sub__(self, other: "MapSpacePoint") -> "MapSpacePoint":
+        return MapSpacePoint(self.x-other.x, self.y-other.y)
     
     def __repr__(self) -> str:
         return f"({self.x}, {self.y})"
@@ -128,10 +132,111 @@ class Map:
             "file": self.file
         }
 
-@dataclass
 class Island:
-    _maps: list[Map]
-    _outline: Polygon = field(init=False)
+    def __init__(self, maps: list[Map], cut_polygon_corners: bool=True):
+        self._maps = maps
+
+        assert len(self._maps) > 0, "error: empty island"
+
+        start_index: dict[MapSpacePoint, list[MapSpaceLineSegment]] = defaultdict(list)
+
+        # we want to find out how many maps each line is a side of without
+        # worrying about line direction, so we simply lexicographically sort
+        # each line's points as we add to its tally to remove direction from the
+        # question.
+        _line_tally: dict[MapSpaceLineSegment, int] = defaultdict(lambda: 0)
+        def tally_key(line: MapSpaceLineSegment) -> MapSpaceLineSegment:
+            return MapSpaceLineSegment(*sorted([line.start, line.end]))
+        def add_tally(line: MapSpaceLineSegment) -> None:
+            _line_tally[tally_key(line)] += 1
+        def get_tally(line: MapSpaceLineSegment) -> int:
+            return _line_tally[tally_key(line)]
+
+        
+        # we want to find the top left point of a map with the lowest available
+        # y-value (so on the top edge of the island). then, to get a clockwise
+        # polygon, we can just go to the top right point of the same map, follow
+        # the other line segment that has that point, and so on.
+        starting_line: Optional[MapSpaceLineSegment] = None
+        lowest_y = float("inf")
+        for map in self._maps:
+            for side_name in ["left", "top", "right", "bottom"]:
+                side: MapSpaceLineSegment = getattr(map, side_name)
+                add_tally(side)
+                start_index[side.start].append(side)
+                if side_name == "top":
+                    if side.start.y == side.end.y and side.start.y < lowest_y:
+                        lowest_y = side.start.y
+                        starting_line = side
+                
+        def get_next_point(p: MapSpacePoint) -> MapSpacePoint:
+            """Returns the next point on the outline starting from `p`. This is
+            done by finding all of the lines pointing out from `p` and returning
+            the one that isn't between two maps and thus is part of the
+            outline."""
+            directions = start_index[p]
+            for d in directions:
+                if get_tally(d) == 1:
+                    return d.end
+        
+        starting_point = starting_line.start
+        shape_in_progress: list[MapSpacePoint] = [starting_point]
+        next_point = starting_line.end
+        
+        while next_point != starting_point:
+            shape_in_progress.append(next_point)
+            next_point = get_next_point(next_point)
+
+        if cut_polygon_corners:
+            # cut across the convex corners by removing all points that three
+            # lines point out of.
+            i = 0
+            while i < len(shape_in_progress):
+                if len(start_index[shape_in_progress[i]]) == 3:
+                    shape_in_progress.pop(i)
+                else:
+                    i += 1
+        
+        outline: list[MapSpaceLineSegment] = []
+        
+        # now we go through the points looking for lines. lines start and end
+        # when the direction between the points change. so, we find our initial
+        # change of direction to be the first point of the first line, then go
+        # until another change is found and finish the line, and so on.
+        direction_change_index = -1
+        
+        for i in range(len(shape_in_progress)-2):
+            start = shape_in_progress[i]
+            middle = shape_in_progress[i+1]
+            end = shape_in_progress[i+2]
+            if middle-start != end-middle:
+                direction_change_index = i+1
+        
+        assert direction_change_index != -1
+        
+        start = shape_in_progress[direction_change_index]
+        possible_end = shape_in_progress[direction_change_index+1]
+        beyond = shape_in_progress[(direction_change_index + 2) % len(shape_in_progress)]
+        next_beyond_index = (direction_change_index + 3) % len(shape_in_progress)
+        starting = True
+        while start != shape_in_progress[direction_change_index] or starting:
+            if beyond-possible_end != possible_end-start:
+                # if possible_end -> beyond marks a change in direction compared
+                # to start -> possible_end, then possible_end is an actual
+                # endpoint, and we will make a line and save it, and then push
+                # start around the shape. (possible_end and beyond get pushed
+                # forward regardless)
+                line = MapSpaceLineSegment(start, possible_end)
+                outline.append(line)
+                start = possible_end
+                starting = False
+            possible_end = beyond
+            beyond = shape_in_progress[next_beyond_index]
+            next_beyond_index += 1
+            next_beyond_index %= len(shape_in_progress)
+
+        self._outline = Polygon(outline)
+    
 
     @property
     def maps(self) -> list[Map]:
@@ -151,55 +256,6 @@ class Island:
             "scale": self.scale,
             "outline": self._outline.to_dict()
         }
-
-    def __post_init__(self):
-        assert len(self._maps) > 0, "error: empty island"
-
-        start_index: dict[MapSpacePoint, list[MapSpaceLineSegment]] = defaultdict(list)
-
-        _line_tally: dict[MapSpaceLineSegment, int] = defaultdict(lambda: 0)
-        def tally_key(line: MapSpaceLineSegment) -> MapSpaceLineSegment:
-            return MapSpaceLineSegment(*sorted([line.start, line.end]))
-        def add_tally(line: MapSpaceLineSegment) -> None:
-            _line_tally[tally_key(line)] += 1
-        def get_tally(line: MapSpaceLineSegment) -> int:
-            return _line_tally[tally_key(line)]
-            
-        
-        # we want to find the top left point of a map with the lowest available
-        # y-value (so on the top edge of the island). then, to get a clockwise
-        # polygon, we can just go to the top right point of the same map, follow
-        # the other line segment that has that point, and so on.
-        starting_line: Optional[MapSpaceLineSegment] = None
-        lowest_y = float("inf")
-        for map in self._maps:
-            for side_name in ["left", "top", "right", "bottom"]:
-                side: MapSpaceLineSegment = getattr(map, side_name)
-                add_tally(side)
-                start_index[side.start].append(side)
-                if side_name == "top":
-                    if side.start.y == side.end.y and side.start.y < lowest_y:
-                        lowest_y = side.start.y
-                        starting_line = side
-        
-        def find_next_line(line: MapSpaceLineSegment) -> MapSpaceLineSegment:
-            potential_directions = start_index[line.end]
-            # logically, for our outline, we want to only use lines that
-            # belong to exactly one map, so we'll use that to pick which way
-            # to go.
-            for d in potential_directions:
-                if get_tally(d) > 1:
-                    continue
-                return d
-        
-        outline: list[MapSpaceLineSegment] = [starting_line]
-        active_line = find_next_line(starting_line)
-        while active_line != starting_line:
-            outline.append(active_line)
-            active_line = find_next_line(active_line)
-        
-        self._outline = Polygon(outline)
-    
 
     @classmethod
     def maps_to_islands(cls, maps: list[Map]) -> list["Island"]:
