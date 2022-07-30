@@ -4,7 +4,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from hashlib import blake2b
 from typing import Optional
-from itertools import cycle
 
 
 @dataclass(order=True, frozen=True)
