@@ -93,9 +93,9 @@ interface StoredIsland {
 }
 
 class IslandOutline {
-  corners: Corner[];
+  corners: readonly Corner[];
   constructor(corners: Corner[]) {
-    this.corners = corners;
+    this.corners = Object.freeze(corners.map(c => Object.freeze(c)));
   }
 }
 
@@ -117,7 +117,7 @@ class Island {
   constructor(record: StoredIsland) {
     this.level = record.scale;
     this.id = Island.idSource++;
-    this.maps = record.maps;
+    this.maps = record.maps.map(m => Object.freeze(m));
     this.outline = new IslandOutline(record.outline);
     for (const map of this.maps) {
       Island.mapIndex[Island.getMapIndexKey(this.level, map)] = this;

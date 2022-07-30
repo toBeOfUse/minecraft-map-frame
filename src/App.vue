@@ -151,7 +151,7 @@ export default {
   name: "App",
   components: { MapMarker, MapOverlay, MapUnderlay },
   data: () => ({
-    paths: Object.freeze(paths),
+    paths: Object.freeze(paths.map((p) => Object.freeze(p))),
     collage: null, // MapCollage object instantiated in "created" hook
     deployed: window.location.protocol == "https:",
     zoomLevel: 3, // currently can be only either 0 or 3
@@ -199,7 +199,7 @@ export default {
         { level: 3, items: islands[3].map((i) => new Island(i)) },
         null,
       ],
-      pointsOfInterest,
+      pointsOfInterest.map((poi) => Object.freeze(poi)),
       {
         mapLevel: 3,
         edgeLengthPx: this.level3MapSizePx,
