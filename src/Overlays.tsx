@@ -1,6 +1,6 @@
 import { VNode } from "vue";
 import * as tsx from "vue-tsx-support";
-import { ItemsInLevel, Coords, Island } from "./Types";
+import { ItemsInLevel, Coords, Island, AABB } from "./Types";
 import { PathData, SVGCubicCurveSegment } from "./Paths";
 
 const MAP_BG = "#D6BF97";
@@ -32,36 +32,16 @@ const IslandMask = tsx.component({
     const h = createElement;
     const i = context.props.island;
     const m = context.props.margin;
-    // TODO: this method of adding a margin won't, like, work, if there are
-    // horizontal lines going right below the reference point's y-level. and
-    // stuff. how do ???
 
-    // a year plus later: look at the lines. find the normals. shift the lines
-    // along the normals by the margin amount. treat overlapping points as the
-    // same so the shape doesn't get pulled apart at convex corners.
-
-    const maps = i.maps;
-
-    // const referencePoint = {
-    //   x: (i.minX + i.minY) / 2,
-    //   y: (i.minY + i.maxY) / 2
-    // };
-    // // const adjustCoord = (coord: number, reference: number) =>
-    // //   coord < reference ? coord - m : coord + m;
-    // // const adjustCorner = (corner: Corner): Coords => ({
-    // //   x: adjustCoord(corner.x, referencePoint.x),
-    // //   y: adjustCoord(corner.y, referencePoint.y)
-    // // });
-    return maps.map(map => (
-      <rect
-        fill={context.props.fill}
-        x={map.x - m / 2}
-        y={map.y - m / 2}
-        width={i.mapSideLength + m}
-        height={i.mapSideLength + m}
+    return (
+      <polygon
         mask={context.props.mask}
+        fill={context.props.fill}
+        points={i.outline.corners.map(c => `${c.x},${c.y}`).join(" ")}
+        stroke={context.props.fill}
+        stroke-width={m * 2}
       />
-    ));
+    );
   }
 });
 
@@ -84,250 +64,248 @@ const IslandOutline = tsx.component({
     }
   },
   render(createElement, context) {
-    // const corners = context.props.island.corners;
     const w = context.props.outlineWidth;
-
+    // TODO: this works but depends on a mask from elsewhere in the svg that
+    // just happens to have the right shapes in it. ideally, we'd mask this
+    // IslandMask with a margin with another IslandMask without a margin that is
+    // created on the spot and somehow placed inside a <mask> tag.
     return <IslandMask island={context.props.island} margin={w} mask={"url(#level0Islands)"} />;
-    // const polys: VNode[] = [];
-    // for (let i = 0; i < corners.length; i++) {
-    //   const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
-    //   const cornerTo = corners[i];
-    //   const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
-    //   const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -w : w;
-    //   const points: Coords[] = [cornerFrom, cornerTo];
-    //   // to get the second two points, move the first ones "out" (along the
-    //   // normal of the edge). then, if the angle is concave, move the second point
-    //   // "back"; if it's convex, move the second point "forward;" and do the
-    //   // opposite for the first point.
-    //   const outAxis = edgeAxis == "x" ? "y" : "x";
-    //   let outDirection;
-    //   if (edgeAxis == "x" && edgeDirection == w) {
-    //     outDirection = -w;
-    //   } else if (edgeAxis == "y" && edgeDirection == w) {
-    //     outDirection = w;
-    //   } else if (edgeAxis == "x" && edgeDirection == -w) {
-    //     outDirection = w;
-    //   } else if (edgeAxis == "y" && edgeDirection == -w) {
-    //     outDirection = -w;
-    //   }
-    //   const outOffset = { [outAxis]: outDirection, [edgeAxis]: 0 };
-    //   const point3 = {
-    //     x: cornerTo.x + Number(outOffset.x),
-    //     y: cornerTo.y + Number(outOffset.y)
-    //   };
-    //   const point4 = {
-    //     x: cornerFrom.x + Number(outOffset.x),
-    //     y: cornerFrom.y + Number(outOffset.y)
-    //   };
-    //   if (cornerTo.angle == CornerType.Convex) {
-    //     point3[edgeAxis] += edgeDirection;
-    //   }
-    //   if (cornerFrom.angle == CornerType.Convex) {
-    //     point4[edgeAxis] += -edgeDirection;
-    //   }
-    //   points.push(point3);
-    //   points.push(point4);
-    //   polys.push(
-    //     <polygon
-    //       fill={context.props.outlineColor}
-    //       points={points.map(p => p.x + "," + p.y).join(" ")}
-    //     />
-    //   );
-    // }
-    // return polys;
   }
 });
 
-// const IslandBorder = tsx.component({
-//   name: "IslandBorder",
-//   functional: true,
-//   props: {
-//     island: {
-//       type: Island,
-//       required: true
-//     },
-//     top: {
-//       type: String,
-//       required: true
-//     },
-//     bottom: {
-//       type: String,
-//       required: true
-//     },
-//     left: {
-//       type: String,
-//       required: true
-//     },
-//     right: {
-//       type: String,
-//       required: true
-//     }
-//   },
-//   render(createElement, context) {
-//     const corners = context.props.island.corners;
-//     const border: VNode[] = [];
-//     for (let i = 0; i < corners.length; i++) {
-//       const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
-//       const cornerTo = corners[i];
-//       const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
-//       const edgeDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
-//       const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
-//       // we are overlapping these svg images very slightly, by widening them, to
-//       // avoid the hairline cracks that appear between them in many browsers
-//       // and svg viewers :(
-//       const adjustedWidth = edgeWidth / 2 + 2;
-//       const cornerWidth = adjustedWidth / 6;
-//       const imageBoxDimensions = { attrs: { width: adjustedWidth, height: adjustedWidth } };
-//       const cornerBoxDimensions = {
-//         attrs: { width: cornerWidth + 1, height: cornerWidth + 1 }
-//       };
-//       if (edgeAxis == "x") {
-//         if (edgeDirection == 1) {
-//           border.push(
-//             <image
-//               href="borders/top.png"
-//               x={cornerFrom.x}
-//               y={cornerFrom.y - adjustedWidth}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMax"
-//             />
-//           );
-//           border.push(
-//             <image
-//               href="borders/top.png"
-//               x={cornerFrom.x + adjustedWidth - 1}
-//               y={cornerFrom.y - adjustedWidth}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMax"
-//             />
-//           );
-//           if (cornerFrom.angle == CornerType.Convex) {
-//             border.push(
-//               <image
-//                 href="borders/topleft.png"
-//                 x={cornerFrom.x - cornerWidth}
-//                 y={cornerFrom.y - cornerWidth}
-//                 {...cornerBoxDimensions}
-//                 preserveAspectRatio="xMaxYMax"
-//               />
-//             );
-//           } else if (cornerFrom.angle == CornerType.Concave) {
-//             border.push(
-//               <rect
-//                 x={cornerFrom.x}
-//                 y={cornerFrom.y - cornerWidth}
-//                 {...cornerBoxDimensions}
-//                 fill={MAP_BG}
-//               />
-//             );
-//           }
-//         } else {
-//           border.push(
-//             <image
-//               href="borders/bottom.png"
-//               x={cornerTo.x}
-//               y={cornerFrom.y}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMin"
-//             />
-//           );
-//           border.push(
-//             <image
-//               href="borders/bottom.png"
-//               x={cornerTo.x + adjustedWidth - 1}
-//               y={cornerFrom.y}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMin"
-//             />
-//           );
-//           if (cornerFrom.angle == CornerType.Convex) {
-//             border.push(
-//               <image
-//                 href="borders/bottomright.png"
-//                 x={cornerFrom.x}
-//                 y={cornerFrom.y}
-//                 {...cornerBoxDimensions}
-//                 preserveAspectRatio="xMinYMin"
-//               />
-//             );
-//           }
-//         }
-//       } else {
-//         if (edgeDirection == 1) {
-//           border.push(
-//             <image
-//               href="borders/right.png"
-//               x={cornerFrom.x}
-//               y={cornerFrom.y}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMin"
-//             />
-//           );
-//           border.push(
-//             <image
-//               href="borders/right.png"
-//               x={cornerFrom.x}
-//               y={cornerFrom.y + adjustedWidth - 1}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMinYMin"
-//             />
-//           );
-//           if (cornerFrom.angle == CornerType.Convex) {
-//             border.push(
-//               <image
-//                 href="borders/topright.png"
-//                 x={cornerFrom.x}
-//                 y={cornerFrom.y - cornerWidth}
-//                 {...cornerBoxDimensions}
-//                 preserveAspectRatio="xMinYMax"
-//               />
-//             );
-//           }
-//         } else {
-//           border.push(
-//             <image
-//               href="borders/left.png"
-//               x={cornerFrom.x - adjustedWidth}
-//               y={cornerTo.y}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMaxYMin"
-//             />
-//           );
-//           border.push(
-//             <image
-//               href="borders/left.png"
-//               x={cornerFrom.x - adjustedWidth}
-//               y={cornerTo.y + adjustedWidth - 1}
-//               {...imageBoxDimensions}
-//               preserveAspectRatio="xMaxYMin"
-//             />
-//           );
-//           if (cornerFrom.angle == CornerType.Convex) {
-//             border.push(
-//               <image
-//                 href="borders/bottomleft.png"
-//                 x={cornerFrom.x - cornerWidth}
-//                 y={cornerFrom.y}
-//                 {...cornerBoxDimensions}
-//                 preserveAspectRatio="xMaxYMax"
-//               />
-//             );
-//           } else if (cornerFrom.angle == CornerType.Concave) {
-//             border.push(
-//               <rect
-//                 fill={MAP_BG}
-//                 x={cornerFrom.x - cornerWidth}
-//                 y={cornerFrom.y - cornerWidth}
-//                 {...cornerBoxDimensions}
-//               />
-//             );
-//           }
-//         }
-//       }
-//     }
-//     return border;
-//   }
-// });
+const IslandBorder = tsx.component({
+  name: "IslandBorder",
+  functional: true,
+  props: {
+    island: {
+      type: Island,
+      required: true
+    }
+  },
+  render(createElement, context) {
+    const borderAspectRatio = 384 / 64;
+    const corners = context.props.island.outline.corners;
+    const border: VNode[] = [];
+    for (let i = 0; i < corners.length; i++) {
+      const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
+      const cornerTo = corners[i];
+      const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
+      const edgeAxisDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
+      const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
+      const imageLength = context.props.island.mapSideLength / 2;
+      const imageCount = edgeWidth / imageLength;
+
+      for (let j = 0; j < imageCount; j++) {
+        const localCornerFrom = { ...cornerFrom };
+        localCornerFrom[edgeAxis] += edgeAxisDirection * imageLength * j;
+        const localCornerTo = { ...localCornerFrom };
+        localCornerTo[edgeAxis] += edgeAxisDirection * imageLength;
+        const edgeVector: Coords = {
+          x: localCornerTo.x - localCornerFrom.x,
+          y: localCornerTo.y - localCornerFrom.y
+        };
+        const outwardVector: Coords = {
+          x: edgeVector.y * (1 / borderAspectRatio),
+          y: -edgeVector.x * (1 / borderAspectRatio)
+        };
+        const baseline: [Coords, Coords] = [localCornerFrom, localCornerTo];
+        const imageBox = AABB.fromPoints(
+          ...baseline,
+          ...(baseline.map(c => ({ x: c.x + outwardVector.x, y: c.y + outwardVector.y })) as [
+            Coords,
+            Coords
+          ])
+        );
+        const image =
+          edgeAxis == "x"
+            ? edgeAxisDirection == 1
+              ? "borders/top.png"
+              : "borders/bottom.png"
+            : edgeAxisDirection == 1
+            ? "borders/right.png"
+            : "borders/left.png";
+        border.push(
+          <image
+            x={imageBox.minX - 1}
+            y={imageBox.minY - 1}
+            width={imageBox.width + 2}
+            height={imageBox.height + 2}
+            href={image}
+          />
+        );
+      }
+    }
+
+    return border;
+
+    // gotta be a less verbose way to do this. should be able to find the
+    // image's box with width and height pretty easily by taking the line as
+    // one side and going 90 degrees counterclockwise and moving an amount
+    // corresponding to the aspect ratio of the border. then the image can
+    // just be positioned naturally from the top left. determining which image
+    // to use is the only interesting part; need (sign)(axis) for that. then,
+    // take a second pass for the convex corners. not sure what is/should be
+    // done for the concave ones?
+    // and, oh, yeah, we need to divide each line up into lengths that are the
+    // same as the relevant map edge lengths.
+
+    // // we are overlapping these svg images very slightly, by widening them, to
+    // // avoid the hairline cracks that appear between them in many browsers
+    // // and svg viewers :(
+    // const adjustedWidth = edgeWidth / 2 + 2;
+    // const cornerWidth = adjustedWidth / 6;
+    // const imageBoxDimensions = { attrs: { width: adjustedWidth, height: adjustedWidth } };
+    // const cornerBoxDimensions = {
+    //   attrs: { width: cornerWidth + 1, height: cornerWidth + 1 }
+    // };
+
+    //   if (edgeAxis == "x") {
+    //     if (edgeDirection == 1) {
+    //       border.push(
+    //         <image
+    //           href="borders/top.png"
+    //           x={cornerFrom.x}
+    //           y={cornerFrom.y - adjustedWidth}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMax"
+    //         />
+    //       );
+    //       border.push(
+    //         <image
+    //           href="borders/top.png"
+    //           x={cornerFrom.x + adjustedWidth - 1}
+    //           y={cornerFrom.y - adjustedWidth}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMax"
+    //         />
+    //       );
+    //       if (cornerFrom.type == "convex") {
+    //         border.push(
+    //           <image
+    //             href="borders/topleft.png"
+    //             x={cornerFrom.x - cornerWidth}
+    //             y={cornerFrom.y - cornerWidth}
+    //             {...cornerBoxDimensions}
+    //             preserveAspectRatio="xMaxYMax"
+    //           />
+    //         );
+    //       } else if (cornerFrom.type == "concave") {
+    //         border.push(
+    //           <rect
+    //             x={cornerFrom.x}
+    //             y={cornerFrom.y - cornerWidth}
+    //             {...cornerBoxDimensions}
+    //             fill={MAP_BG}
+    //           />
+    //         );
+    //       }
+    //     } else {
+    //       border.push(
+    //         <image
+    //           href="borders/bottom.png"
+    //           x={cornerTo.x}
+    //           y={cornerFrom.y}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMin"
+    //         />
+    //       );
+    //       border.push(
+    //         <image
+    //           href="borders/bottom.png"
+    //           x={cornerTo.x + adjustedWidth - 1}
+    //           y={cornerFrom.y}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMin"
+    //         />
+    //       );
+    //       if (cornerFrom.type == "convex") {
+    //         border.push(
+    //           <image
+    //             href="borders/bottomright.png"
+    //             x={cornerFrom.x}
+    //             y={cornerFrom.y}
+    //             {...cornerBoxDimensions}
+    //             preserveAspectRatio="xMinYMin"
+    //           />
+    //         );
+    //       }
+    //     }
+    //   } else {
+    //     if (edgeDirection == 1) {
+    //       border.push(
+    //         <image
+    //           href="borders/right.png"
+    //           x={cornerFrom.x}
+    //           y={cornerFrom.y}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMin"
+    //         />
+    //       );
+    //       border.push(
+    //         <image
+    //           href="borders/right.png"
+    //           x={cornerFrom.x}
+    //           y={cornerFrom.y + adjustedWidth - 1}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMinYMin"
+    //         />
+    //       );
+    //       if (cornerFrom.type == "convex") {
+    //         border.push(
+    //           <image
+    //             href="borders/topright.png"
+    //             x={cornerFrom.x}
+    //             y={cornerFrom.y - cornerWidth}
+    //             {...cornerBoxDimensions}
+    //             preserveAspectRatio="xMinYMax"
+    //           />
+    //         );
+    //       }
+    //     } else {
+    //       border.push(
+    //         <image
+    //           href="borders/left.png"
+    //           x={cornerFrom.x - adjustedWidth}
+    //           y={cornerTo.y}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMaxYMin"
+    //         />
+    //       );
+    //       border.push(
+    //         <image
+    //           href="borders/left.png"
+    //           x={cornerFrom.x - adjustedWidth}
+    //           y={cornerTo.y + adjustedWidth - 1}
+    //           {...imageBoxDimensions}
+    //           preserveAspectRatio="xMaxYMin"
+    //         />
+    //       );
+    //       if (cornerFrom.type == "convex") {
+    //         border.push(
+    //           <image
+    //             href="borders/bottomleft.png"
+    //             x={cornerFrom.x - cornerWidth}
+    //             y={cornerFrom.y}
+    //             {...cornerBoxDimensions}
+    //             preserveAspectRatio="xMaxYMax"
+    //           />
+    //         );
+    //       } else if (cornerFrom.type == "concave") {
+    //         border.push(
+    //           <rect
+    //             fill={MAP_BG}
+    //             x={cornerFrom.x - cornerWidth}
+    //             y={cornerFrom.y - cornerWidth}
+    //             {...cornerBoxDimensions}
+    //           />
+    //         );
+    //       }
+    //     }
+    //   }
+    // }
+    // return border;
+  }
+});
 
 const MapPath = tsx.component({
   name: "MapPath",
@@ -449,31 +427,25 @@ const SVGContainer = tsx.component({
   }
 });
 
-// const MapUnderlay = tsx.component({
-//   name: "MapUnderlay",
-//   functional: true,
-//   props: {
-//     islands: {
-//       type: Array as () => ItemsInLevel<Island>[],
-//       required: true
-//     }
-//   },
-//   render(createElement, context) {
-//     const p = context.props;
-//     return (
-//       <SVGContainer islands={p.islands} id="underlay">
-//         <IslandBorder
-//           island={p.islands[3].items[0]}
-//           top="borders/top.png"
-//           bottom="borders/bottom.png"
-//           left="borders/left.png"
-//           right="borders/right.png"
-//         />
-//         <IslandMask island={p.islands[3].items[0]} fill={MAP_BG} margin={10} />
-//       </SVGContainer>
-//     );
-//   }
-// });
+const MapUnderlay = tsx.component({
+  name: "MapUnderlay",
+  functional: true,
+  props: {
+    islands: {
+      type: Array as () => ItemsInLevel<Island>[],
+      required: true
+    }
+  },
+  render(createElement, context) {
+    const p = context.props;
+    return (
+      <SVGContainer islands={p.islands} id="underlay">
+        <IslandBorder island={p.islands[3].items[0]} />
+        <IslandMask island={p.islands[3].items[0]} fill={MAP_BG} margin={10} />
+      </SVGContainer>
+    );
+  }
+});
 
 const overlayCache = {
   mask: undefined as undefined | VueTsxSupport.JSX.Element[],
@@ -511,7 +483,7 @@ const MapOverlay = tsx.component({
 
     if (!overlayCache.outlines) {
       overlayCache.outlines = p.islands[0].items.map(i => (
-        <IslandOutline island={i} outlineWidth={10} />
+        <IslandOutline island={i} outlineWidth={3} />
       ));
     }
 
@@ -573,4 +545,4 @@ const MapOverlay = tsx.component({
   }
 });
 
-export { MapOverlay }; //, MapUnderlay };
+export { MapOverlay, MapUnderlay };

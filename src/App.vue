@@ -19,7 +19,7 @@
       @transitionend="zoomTransitionEnd"
       @wheel="handleWheel"
     >
-      <!-- <MapUnderlay :islands="collage.islands" /> -->
+      <MapUnderlay :islands="collage.islands" />
       <img
         v-for="map in currentlyVisibleMaps"
         :key="map.file"
@@ -145,11 +145,11 @@ import MapMarker from "./Marker.vue";
 import { Position, Dimensions, clamp, getEdgeLength, distance, Island } from "./Types.ts";
 import MapCollage from "./MapCollage";
 import paths from "./mapdata/paths";
-import { MapOverlay } from "./Overlays";
+import { MapOverlay, MapUnderlay } from "./Overlays";
 
 export default {
   name: "App",
-  components: { MapMarker, MapOverlay }, // MapUnderlay },
+  components: { MapMarker, MapOverlay, MapUnderlay },
   data: () => ({
     paths: Object.freeze(paths),
     collage: null, // MapCollage object instantiated in "created" hook

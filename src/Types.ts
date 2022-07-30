@@ -58,14 +58,45 @@ interface Line {
   end: Coords;
 }
 
-interface StoredPolygon {
-  segments: Line[];
+class AABB {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  constructor(minX: number, maxX: number, minY: number, maxY: number) {
+    this.minX = minX;
+    this.minY = minY;
+    this.maxX = maxX;
+    this.maxY = maxY;
+  }
+  static fromPoints(p1: Coords, p2: Coords, p3: Coords, p4: Coords) {
+    const exes = [p1, p2, p3, p4].map(p => p.x);
+    const whys = [p1, p2, p3, p4].map(p => p.y);
+    return new AABB(Math.min(...exes), Math.max(...exes), Math.min(...whys), Math.max(...whys));
+  }
+  get width(): number {
+    return this.maxX - this.minX;
+  }
+  get height(): number {
+    return this.maxY - this.minY;
+  }
+}
+
+interface Corner extends Coords {
+  type: "convex" | "concave";
 }
 
 interface StoredIsland {
   maps: Map[];
   scale: number;
-  outline: StoredPolygon;
+  outline: Corner[];
+}
+
+class IslandOutline {
+  corners: Corner[];
+  constructor(corners: Corner[]) {
+    this.corners = corners;
+  }
 }
 
 class Island {
@@ -78,7 +109,7 @@ class Island {
   maxX: number = -Infinity;
   minY: number = Infinity;
   maxY: number = -Infinity;
-  collisionOutline: Line[];
+  outline: IslandOutline;
   static mapIndex: Record<string, Island> = {};
   private static getMapIndexKey(level: number, topLeft: Coords) {
     return `${level}: (${topLeft.x}, ${topLeft.y})`;
@@ -87,7 +118,7 @@ class Island {
     this.level = record.scale;
     this.id = Island.idSource++;
     this.maps = record.maps;
-    this.collisionOutline = record.outline.segments;
+    this.outline = new IslandOutline(record.outline);
     for (const map of this.maps) {
       Island.mapIndex[Island.getMapIndexKey(this.level, map)] = this;
       this.minX = Math.min(this.minX, map.x);
@@ -217,5 +248,6 @@ export {
   Line,
   ItemsInLevel,
   Island,
-  StoredIsland
+  StoredIsland,
+  AABB
 };
