@@ -2,8 +2,9 @@
 from base64 import urlsafe_b64encode as b64
 from collections import defaultdict
 from dataclasses import dataclass
+from enum import Enum
 from hashlib import blake2b
-from typing import Optional
+from typing import Literal, Optional
 
 
 @dataclass(order=True, frozen=True)
@@ -45,12 +46,20 @@ class MapSpaceLineSegment:
             "end": self.end.to_dict()
         }
 
-@dataclass
-class Polygon:
-    segments: list[MapSpaceLineSegment]
+CornerType = Enum("CornerType", "concave convex")
 
-    def to_dict(self) -> dict:
-        return {"segments": [x.to_dict() for x in self.segments]}
+@dataclass
+class MapCorner:
+    x: int
+    y: int
+    type: CornerType
+
+    def to_dict(self):
+        return {
+            "x": self.x,
+            "y": self.y,
+            "type": self.type.name
+        }
 
 @dataclass
 class Map:
@@ -132,7 +141,7 @@ class Map:
         }
 
 class Island:
-    def __init__(self, maps: list[Map], cut_polygon_corners: bool=True):
+    def __init__(self, maps: list[Map]):
         self._maps = maps
 
         assert len(self._maps) > 0, "error: empty island"
@@ -186,55 +195,15 @@ class Island:
             shape_in_progress.append(next_point)
             next_point = get_next_point(next_point)
 
-        if cut_polygon_corners:
-            # cut across the convex corners by removing all points that three
-            # lines point out of.
-            i = 0
-            while i < len(shape_in_progress):
-                if len(start_index[shape_in_progress[i]]) == 3:
-                    shape_in_progress.pop(i)
-                else:
-                    i += 1
-        
-        outline: list[MapSpaceLineSegment] = []
-        
-        # now we go through the points looking for lines. lines start and end
-        # when the direction between the points change. so, we find our initial
-        # change of direction to be the first point of the first line, then go
-        # until another change is found and finish the line, and so on.
-        direction_change_index = -1
-        
-        for i in range(len(shape_in_progress)-2):
-            start = shape_in_progress[i]
-            middle = shape_in_progress[i+1]
-            end = shape_in_progress[i+2]
-            if middle-start != end-middle:
-                direction_change_index = i+1
-        
-        assert direction_change_index != -1
-        
-        start = shape_in_progress[direction_change_index]
-        possible_end = shape_in_progress[direction_change_index+1]
-        beyond = shape_in_progress[(direction_change_index + 2) % len(shape_in_progress)]
-        next_beyond_index = (direction_change_index + 3) % len(shape_in_progress)
-        starting = True
-        while start != shape_in_progress[direction_change_index] or starting:
-            if beyond-possible_end != possible_end-start:
-                # if possible_end -> beyond marks a change in direction compared
-                # to start -> possible_end, then possible_end is an actual
-                # endpoint, and we will make a line and save it, and then push
-                # start around the shape. (possible_end and beyond get pushed
-                # forward regardless)
-                line = MapSpaceLineSegment(start, possible_end)
-                outline.append(line)
-                start = possible_end
-                starting = False
-            possible_end = beyond
-            beyond = shape_in_progress[next_beyond_index]
-            next_beyond_index += 1
-            next_beyond_index %= len(shape_in_progress)
+        corners: list[MapCorner] = []
 
-        self._outline = Polygon(outline)
+        for point in shape_in_progress:
+            if len(start_index[point]) == 3:
+                corners.append(MapCorner(point.x, point.y, CornerType.concave))
+            elif len(start_index[point]) == 1:
+                corners.append(MapCorner(point.x, point.y, CornerType.convex))
+        
+        self._outline = corners
     
 
     @property
@@ -242,8 +211,8 @@ class Island:
         return [*self._maps]
     
     @property
-    def outline(self) -> Polygon:
-        return Polygon([*self._outline.segments])
+    def outline(self) -> list[MapCorner]:
+        return [*self._outline.corners]
 
     @property
     def scale(self) -> int:
@@ -253,7 +222,7 @@ class Island:
         return {
             "maps": [x.to_dict() for x in self._maps],
             "scale": self.scale,
-            "outline": self._outline.to_dict()
+            "outline": [x.to_dict() for x in self._outline]
         }
 
     @classmethod
