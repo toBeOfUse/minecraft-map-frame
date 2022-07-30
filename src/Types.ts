@@ -1,8 +1,3 @@
-import type Island from "./Island";
-import type { BBox } from "rbush";
-import chroma from "chroma-js";
-import { Bezier } from "bezier-js";
-
 // simple cartesian grid types
 interface CSSDimensions {
   width: string;
@@ -58,113 +53,61 @@ interface Coords {
   y: number;
 }
 
-// types used by the Island class to draw borders around Island objects
-enum CornerType {
-  Unset,
-  Straight,
-  Concave,
-  Convex,
+interface Line {
+  start: Coords;
+  end: Coords;
 }
 
-class Corner {
-  x: number;
-  y: number;
-  angle: CornerType;
-
-  constructor(x: number, y: number) {
-    this.angle = CornerType.Unset;
-    this.x = x;
-    this.y = y;
-  }
-
-  setCornerType(type: CornerType) {
-    this.angle = type;
-  }
+interface StoredPolygon {
+  segments: Line[];
 }
 
-class Line {
-  // we need to be able to index our lines by their left-most x coordinate and by
-  // their upper-most y coordinate, so these two numbers are ordered least to
-  // greatest. (the second number in the tuple is there for the hasHeight and
-  // hasWidth properties.)
-  xRange: [number, number];
-  yRange: [number, number];
-  get hasWidth() {
-    return this.xRange[0] !== this.xRange[1];
-  }
-  get hasHeight() {
-    return this.yRange[0] !== this.yRange[1];
-  }
-  get width() {
-    return this.xRange[1] - this.xRange[0];
-  }
-  get height() {
-    return this.yRange[1] - this.yRange[0];
-  }
-
-  constructor(
-    public x1: number,
-    public y1: number,
-    public x2: number,
-    public y2: number
-  ) {
-    this.xRange = [Math.min(x1, x2), Math.max(x1, x2)];
-    this.yRange = [Math.min(y1, y2), Math.max(y1, y2)];
-  }
-  // returns the x-coordinate of the point on the line segment that is on the
-  // horizontal line for the given y-coordinate. returns NaN in the case of a
-  // nonsensical query.
-  xAt(y: number): number {
-    if (!this.hasHeight || y < this.yRange[0] || y > this.yRange[1]) {
-      return NaN;
-    } else {
-      // figure out how far along the line the given y coordinate places us, on a
-      // scale from 0-1 (if the weight is 0, we are at the same vertical position as
-      // the first point in the line; if the weight is 1, we are at the same vertical
-      // position as the second point in the line; the rest of the possibilities
-      // exist in between)
-      const weight = Math.abs(y - this.y1) / this.height;
-      // linearly interpolate between the x coordinates by applying the weight
-      return this.x2 * weight + this.x1 * (1 - weight);
-    }
-  }
-  yAt(x: number): number {
-    if (!this.hasWidth || x < this.xRange[0] || x > this.xRange[1]) {
-      return NaN;
-    } else {
-      const weight = Math.abs(x - this.x1) / this.width;
-      return this.y2 * weight + this.y1 * (1 - weight);
-    }
-  }
+interface StoredIsland {
+  maps: Map[];
+  scale: number;
+  outline: StoredPolygon;
 }
 
-class Shape {
-  // xIndex allows you to look up horizontal and diagonal lines by their left-most x
-  // coordinate, yielding an array of lines sorted by their upper-most y coordinate
-  xIndex: Record<number, Line[]> = {};
-  // yIndex allows you to look up vertical and diagonal lines by their upper-most y
-  // coordinate, yielding an array of lines sorted by their left-most x coordinate
-  yIndex: Record<number, Line[]> = {};
-  constructor(public lines: Line[]) {
-    for (const line of lines) {
-      if (line.hasHeight) {
-        if (line.yRange[0] in this.yIndex) {
-          this.yIndex[line.yRange[0]].push(line);
-          this.yIndex[line.yRange[0]].sort((a, b) => a.xRange[0] - b.xRange[0]);
-        } else {
-          this.yIndex[line.yRange[0]] = [line];
-        }
-      }
-
-      if (line.hasWidth) {
-        if (line.xRange[0] in this.xIndex) {
-          this.xIndex[line.xRange[0]].push(line);
-          this.xIndex[line.xRange[0]].sort((a, b) => a.yRange[0] - b.yRange[0]);
-        } else {
-          this.xIndex[line.xRange[0]] = [line];
-        }
-      }
+class Island {
+  level: number;
+  id: number;
+  private static idSource: number = 0;
+  maps: Map[];
+  pointsOfInterest: PointOfInterest[] = [];
+  minX: number = Infinity;
+  maxX: number = -Infinity;
+  minY: number = Infinity;
+  maxY: number = -Infinity;
+  collisionOutline: Line[];
+  static mapIndex: Record<string, Island> = {};
+  private static getMapIndexKey(level: number, topLeft: Coords) {
+    return `${level}: (${topLeft.x}, ${topLeft.y})`;
+  }
+  constructor(record: StoredIsland) {
+    this.level = record.scale;
+    this.id = Island.idSource++;
+    this.maps = record.maps;
+    this.collisionOutline = record.outline.segments;
+    for (const map of this.maps) {
+      Island.mapIndex[Island.getMapIndexKey(this.level, map)] = this;
+      this.minX = Math.min(this.minX, map.x);
+      this.minY = Math.min(this.minY, map.y);
+      this.maxX = Math.max(this.maxX, map.x + getEdgeLength(this.level));
+      this.maxY = Math.max(this.maxY, map.y + getEdgeLength(this.level));
     }
+  }
+  addPOI(poi: PointOfInterest) {
+    poi.setPartOfIsland(this);
+    this.pointsOfInterest.push(poi);
+  }
+  static getIslandContainingMap(level: number, topLeft: Coords) {
+    return Island.mapIndex[Island.getMapIndexKey(level, topLeft)];
+  }
+  pointInIsland(): boolean {
+    return true;
+  }
+  get mapSideLength(): number {
+    return getEdgeLength(this.level);
   }
 }
 
@@ -219,7 +162,7 @@ class PointOfInterest {
     PointOfInterest.idSource += 1;
   }
 
-  isPartOfIsland(island: Island) {
+  setPartOfIsland(island: Island) {
     this.islandIDs.push(island.id);
     if (island.level != 3) {
       this.onlyLevel3 = false;
@@ -263,8 +206,6 @@ export {
   Dimensions,
   Position,
   Map,
-  Corner,
-  CornerType,
   Coords,
   clamp,
   mod,
@@ -274,8 +215,7 @@ export {
   StoredPOI,
   POIType,
   Line,
-  Shape,
   ItemsInLevel,
-  PathData,
-  SVGCubicCurveSegment
+  Island,
+  StoredIsland
 };

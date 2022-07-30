@@ -19,7 +19,7 @@
       @transitionend="zoomTransitionEnd"
       @wheel="handleWheel"
     >
-      <MapUnderlay :islands="collage.islands" />
+      <!-- <MapUnderlay :islands="collage.islands" /> -->
       <img
         v-for="map in currentlyVisibleMaps"
         :key="map.file"
@@ -95,7 +95,7 @@
           </span>
           <span>
             <input id="biome" type="checkbox" value="biome" v-model="allowedPOITypes" />
-            <label for="biome">Biomes</label>
+            <label for="biome"> Biomes </label>
           </span>
           <span>
             <input id="mining" type="checkbox" value="mining" v-model="allowedPOITypes" />
@@ -119,7 +119,7 @@
               v-model="showingPaths"
               :disabled="zoomLevel == 0"
             />
-            <label for="pathsCheckbox">Paths</label>
+            <label for="pathsCheckbox"> Paths </label>
           </span>
         </div>
       </div>
@@ -142,15 +142,14 @@ import RBush from "rbush";
 import islands from "./mapdata/processed_maps.json";
 import pointsOfInterest from "./mapdata/points_of_interest.ts";
 import MapMarker from "./Marker.vue";
-import { Position, Dimensions, clamp, getEdgeLength, distance } from "./Types.ts";
+import { Position, Dimensions, clamp, getEdgeLength, distance, Island } from "./Types.ts";
 import MapCollage from "./MapCollage";
-import Island from "./Island";
 import paths from "./mapdata/paths";
-import { MapOverlay, MapUnderlay } from "./Overlays";
+import { MapOverlay } from "./Overlays";
 
 export default {
   name: "App",
-  components: { MapMarker, MapOverlay, MapUnderlay },
+  components: { MapMarker, MapOverlay }, // MapUnderlay },
   data: () => ({
     paths: Object.freeze(paths),
     collage: null, // MapCollage object instantiated in "created" hook
@@ -192,10 +191,20 @@ export default {
     showingPaths: false,
   }),
   created() {
-    this.collage = new MapCollage(islands, pointsOfInterest, {
-      mapLevel: 3,
-      edgeLengthPx: this.level3MapSizePx,
-    });
+    this.collage = new MapCollage(
+      [
+        { level: 0, items: islands[0].map((i) => new Island(i)) },
+        null,
+        null,
+        { level: 3, items: islands[3].map((i) => new Island(i)) },
+        null,
+      ],
+      pointsOfInterest,
+      {
+        mapLevel: 3,
+        edgeLengthPx: this.level3MapSizePx,
+      }
+    );
     const preAreaMatch = location.hash.match(/^#level(\d+)x(-?\d+)z(-?\d+)$/);
     let successfullyLoadedNonDefaultStartingPoint = false;
     if (preAreaMatch) {
@@ -238,7 +247,7 @@ export default {
 
       // this will have to be changed if we add support for multiple level 3
       // islands
-      this.currentIsland = this.collage.islands[3].items[0];
+      this.currentIsland = Island.getIslandContainingMap(3, { x: 0, y: 0 });
     }
     // the actual next values are not known unless isMidZoom
     this.nextFullMapPos = this.fullMapPos;
@@ -280,11 +289,7 @@ export default {
           x: event.pageX,
           y: event.pageY,
         });
-        const bounds = this.currentPanningBounds;
-        this.fullMapPos = new Position(
-          clamp(newFullMapPos.left, bounds.lowerXBound, bounds.upperXBound),
-          clamp(newFullMapPos.top, bounds.lowerYBound, bounds.upperYBound)
-        );
+        this.fullMapPos = newFullMapPos;
       }
     },
     levelChange(newLevel, map) {
@@ -422,14 +427,10 @@ export default {
 
           this.lastDistBetweenTouches = newDistBetweenTouches;
         }
-        const bounds = this.currentPanningBounds;
 
         const oldFullMapPos = this.fullMapPos;
 
-        this.fullMapPos = new Position(
-          clamp(newX, bounds.lowerXBound, bounds.upperXBound),
-          clamp(newY, bounds.lowerYBound, bounds.upperYBound)
-        );
+        this.fullMapPos = new Position(newX, newY);
 
         const panningVector = {
           x: this.fullMapPos.left - oldFullMapPos.left,
@@ -480,16 +481,11 @@ export default {
         ) {
           const elapsedTime = currentTime - oldTime;
           oldTime = currentTime;
-          const newPos = new Position(
+          this.fullMapPos = new Position(
             this.fullMapPos.left +
               this.lastPanningDirection.x * (this.lastPanningSpeed * elapsedTime),
             this.fullMapPos.top +
               this.lastPanningDirection.y * (this.lastPanningSpeed * elapsedTime)
-          );
-          const bounds = this.currentPanningBounds;
-          this.fullMapPos = new Position(
-            clamp(newPos.left, bounds.lowerXBound, bounds.upperXBound),
-            clamp(newPos.top, bounds.lowerYBound, bounds.upperYBound)
           );
           this.lastPanningSpeed *= 0.9;
           if (this.lastPanningSpeed <= 0.05) {
@@ -635,69 +631,69 @@ export default {
       );
       return result;
     },
-    currentPanningBounds() {
-      // break glass in case of debugging something completely different:
-      // return {
-      //     lowerXBound: -Infinity,
-      //     upperXBound: Infinity,
-      //     lowerYBound: -Infinity,
-      //     upperYBound: Infinity
-      // };
+    // currentPanningBounds() {
+    //   // break glass in case of debugging something completely different:
+    //   // return {
+    //   //     lowerXBound: -Infinity,
+    //   //     upperXBound: Infinity,
+    //   //     lowerYBound: -Infinity,
+    //   //     upperYBound: Infinity
+    //   // };
 
-      // translate the point at the center of the viewport into the map collage's
-      // coordinate system
-      const centerPoint = new Position(this.windowWidth / 2, this.windowHeight / 2);
-      const coordsWithinCollage = this.collage.getCoordsWithinCollageFromViewportPos(
-        centerPoint,
-        this.fullMapPos
-      );
-      // round the coordinates of the point at the center of the viewport down to
-      // retrieve the upper left corner of the map that is currently centered
-      // at whatever zoom level we are at
-      const mapX =
-        Math.floor(coordsWithinCollage.x / getEdgeLength(this.zoomLevel)) *
-        getEdgeLength(this.zoomLevel);
-      const mapY =
-        Math.floor(coordsWithinCollage.y / getEdgeLength(this.zoomLevel)) *
-        getEdgeLength(this.zoomLevel);
-      // use the islandShape object's properties to retrieve the lines that
-      // bound the current island that are directly left and right and directly
-      // below and above the current center-of-the-viewport point
-      const xBoundLines = this.currentIsland.islandShape.yIndex[mapY];
-      const yBoundLines = this.currentIsland.islandShape.xIndex[mapX];
-      // determine the minimum x and y values and the maximum x and y values
-      // that the center-of-the-viewport can have in the collage coordinate
-      // system while still being over the current island
-      const mapSpaceLowerBounds = {
-        x: xBoundLines[0].xAt(coordsWithinCollage.y),
-        y: yBoundLines[0].yAt(coordsWithinCollage.x),
-      };
-      const mapSpaceUpperBounds = {
-        x: xBoundLines[xBoundLines.length - 1].xAt(coordsWithinCollage.y),
-        y: yBoundLines[yBoundLines.length - 1].yAt(coordsWithinCollage.x),
-      };
-      // translate those minimums and maximum into pixel coordinates relative
-      // to the top left of the viewport
-      const screenSpaceLowerBounds = this.collage.getPosWithinCollage(mapSpaceLowerBounds);
-      screenSpaceLowerBounds._left += this.fullMapPos.left;
-      screenSpaceLowerBounds._top += this.fullMapPos.top;
-      const screenSpaceUpperBounds = this.collage.getPosWithinCollage(mapSpaceUpperBounds);
-      screenSpaceUpperBounds._left += this.fullMapPos.left;
-      screenSpaceUpperBounds._top += this.fullMapPos.top;
-      // translate the pixel coordinates establishing the minimums and maximums
-      // for the center point of the screen into pixel coordinate bounds for
-      // the placement of the map. the + 1s are a hack to keep the user from
-      // panning onto the right and top edges of the current island, which are
-      // a sort of edge case
-      const result = {
-        lowerXBound: this.fullMapPos.left - (screenSpaceUpperBounds.left - centerPoint.left) + 1,
-        upperXBound: this.fullMapPos.left + (centerPoint.left - screenSpaceLowerBounds.left),
-        lowerYBound: this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
-        upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top),
-      };
+    //   // translate the point at the center of the viewport into the map collage's
+    //   // coordinate system
+    //   const centerPoint = new Position(this.windowWidth / 2, this.windowHeight / 2);
+    //   const coordsWithinCollage = this.collage.getCoordsWithinCollageFromViewportPos(
+    //     centerPoint,
+    //     this.fullMapPos
+    //   );
+    //   // round the coordinates of the point at the center of the viewport down to
+    //   // retrieve the upper left corner of the map that is currently centered
+    //   // at whatever zoom level we are at
+    //   const mapX =
+    //     Math.floor(coordsWithinCollage.x / getEdgeLength(this.zoomLevel)) *
+    //     getEdgeLength(this.zoomLevel);
+    //   const mapY =
+    //     Math.floor(coordsWithinCollage.y / getEdgeLength(this.zoomLevel)) *
+    //     getEdgeLength(this.zoomLevel);
+    //   // use the islandShape object's properties to retrieve the lines that
+    //   // bound the current island that are directly left and right and directly
+    //   // below and above the current center-of-the-viewport point
+    //   const xBoundLines = this.currentIsland.islandShape.yIndex[mapY];
+    //   const yBoundLines = this.currentIsland.islandShape.xIndex[mapX];
+    //   // determine the minimum x and y values and the maximum x and y values
+    //   // that the center-of-the-viewport can have in the collage coordinate
+    //   // system while still being over the current island
+    //   const mapSpaceLowerBounds = {
+    //     x: xBoundLines[0].xAt(coordsWithinCollage.y),
+    //     y: yBoundLines[0].yAt(coordsWithinCollage.x),
+    //   };
+    //   const mapSpaceUpperBounds = {
+    //     x: xBoundLines[xBoundLines.length - 1].xAt(coordsWithinCollage.y),
+    //     y: yBoundLines[yBoundLines.length - 1].yAt(coordsWithinCollage.x),
+    //   };
+    //   // translate those minimums and maximum into pixel coordinates relative
+    //   // to the top left of the viewport
+    //   const screenSpaceLowerBounds = this.collage.getPosWithinCollage(mapSpaceLowerBounds);
+    //   screenSpaceLowerBounds._left += this.fullMapPos.left;
+    //   screenSpaceLowerBounds._top += this.fullMapPos.top;
+    //   const screenSpaceUpperBounds = this.collage.getPosWithinCollage(mapSpaceUpperBounds);
+    //   screenSpaceUpperBounds._left += this.fullMapPos.left;
+    //   screenSpaceUpperBounds._top += this.fullMapPos.top;
+    //   // translate the pixel coordinates establishing the minimums and maximums
+    //   // for the center point of the screen into pixel coordinate bounds for
+    //   // the placement of the map. the + 1s are a hack to keep the user from
+    //   // panning onto the right and top edges of the current island, which are
+    //   // a sort of edge case
+    //   const result = {
+    //     lowerXBound: this.fullMapPos.left - (screenSpaceUpperBounds.left - centerPoint.left) + 1,
+    //     upperXBound: this.fullMapPos.left + (centerPoint.left - screenSpaceLowerBounds.left),
+    //     lowerYBound: this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
+    //     upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top),
+    //   };
 
-      return result;
-    },
+    //   return result;
+    // },
     currentPointsOfInterest() {
       let narrowedDownPoints = [];
       if (this.isMidZoom) {
