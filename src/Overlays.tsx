@@ -87,11 +87,20 @@ const IslandBorder = tsx.component({
     const corners = context.props.island.outline.corners;
     const border: VNode[] = [];
     for (let i = 0; i < corners.length; i++) {
+      // first pass: add top/right/bottom/left border images
       const cornerFrom = i == 0 ? corners[corners.length - 1] : corners[i - 1];
       const cornerTo = corners[i];
       const edgeAxis = cornerFrom.x == cornerTo.x ? "y" : "x";
       const edgeAxisDirection = cornerTo[edgeAxis] < cornerFrom[edgeAxis] ? -1 : 1;
       const edgeWidth = Math.abs(cornerTo[edgeAxis] - cornerFrom[edgeAxis]);
+      const sideType =
+        edgeAxis == "x"
+          ? edgeAxisDirection == 1
+            ? "top"
+            : "bottom"
+          : edgeAxisDirection == 1
+          ? "right"
+          : "left";
       const imageLength = context.props.island.mapSideLength / 2;
       const imageCount = edgeWidth / imageLength;
 
@@ -116,194 +125,49 @@ const IslandBorder = tsx.component({
             Coords
           ])
         );
-        const image =
-          edgeAxis == "x"
-            ? edgeAxisDirection == 1
-              ? "borders/top.png"
-              : "borders/bottom.png"
-            : edgeAxisDirection == 1
-            ? "borders/right.png"
-            : "borders/left.png";
+
         border.push(
           <image
             x={imageBox.minX - 1}
             y={imageBox.minY - 1}
             width={imageBox.width + 2}
             height={imageBox.height + 2}
-            href={image}
+            href={`borders/${sideType}.png`}
+          />
+        );
+      }
+
+      if (cornerTo.type == "convex") {
+        const sideTypes = ["top", "right", "bottom", "left"];
+        const cornerType = sideType + sideTypes[(sideTypes.indexOf(sideType) + 1) % 4];
+        const cornerSquareSide = (1 / borderAspectRatio) * imageLength;
+        const farSquarePoint = { ...cornerTo };
+        farSquarePoint[edgeAxis] += edgeAxisDirection * cornerSquareSide;
+        const offsetVector = {
+          x: farSquarePoint.y - cornerTo.y,
+          y: -(farSquarePoint.x - cornerTo.x)
+        };
+        console.log(offsetVector);
+        const baseline: [Coords, Coords] = [cornerTo, farSquarePoint];
+        const square = AABB.fromPoints(
+          ...baseline,
+          ...(baseline.map(l => ({ x: l.x + offsetVector.x, y: l.y + offsetVector.y })) as [
+            Coords,
+            Coords
+          ])
+        );
+        border.push(
+          <image
+            href={`borders/${cornerType}.png`}
+            x={square.minX}
+            y={square.minY}
+            width={square.width}
+            height={square.height}
           />
         );
       }
     }
-
     return border;
-
-    // gotta be a less verbose way to do this. should be able to find the
-    // image's box with width and height pretty easily by taking the line as
-    // one side and going 90 degrees counterclockwise and moving an amount
-    // corresponding to the aspect ratio of the border. then the image can
-    // just be positioned naturally from the top left. determining which image
-    // to use is the only interesting part; need (sign)(axis) for that. then,
-    // take a second pass for the convex corners. not sure what is/should be
-    // done for the concave ones?
-    // and, oh, yeah, we need to divide each line up into lengths that are the
-    // same as the relevant map edge lengths.
-
-    // // we are overlapping these svg images very slightly, by widening them, to
-    // // avoid the hairline cracks that appear between them in many browsers
-    // // and svg viewers :(
-    // const adjustedWidth = edgeWidth / 2 + 2;
-    // const cornerWidth = adjustedWidth / 6;
-    // const imageBoxDimensions = { attrs: { width: adjustedWidth, height: adjustedWidth } };
-    // const cornerBoxDimensions = {
-    //   attrs: { width: cornerWidth + 1, height: cornerWidth + 1 }
-    // };
-
-    //   if (edgeAxis == "x") {
-    //     if (edgeDirection == 1) {
-    //       border.push(
-    //         <image
-    //           href="borders/top.png"
-    //           x={cornerFrom.x}
-    //           y={cornerFrom.y - adjustedWidth}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMax"
-    //         />
-    //       );
-    //       border.push(
-    //         <image
-    //           href="borders/top.png"
-    //           x={cornerFrom.x + adjustedWidth - 1}
-    //           y={cornerFrom.y - adjustedWidth}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMax"
-    //         />
-    //       );
-    //       if (cornerFrom.type == "convex") {
-    //         border.push(
-    //           <image
-    //             href="borders/topleft.png"
-    //             x={cornerFrom.x - cornerWidth}
-    //             y={cornerFrom.y - cornerWidth}
-    //             {...cornerBoxDimensions}
-    //             preserveAspectRatio="xMaxYMax"
-    //           />
-    //         );
-    //       } else if (cornerFrom.type == "concave") {
-    //         border.push(
-    //           <rect
-    //             x={cornerFrom.x}
-    //             y={cornerFrom.y - cornerWidth}
-    //             {...cornerBoxDimensions}
-    //             fill={MAP_BG}
-    //           />
-    //         );
-    //       }
-    //     } else {
-    //       border.push(
-    //         <image
-    //           href="borders/bottom.png"
-    //           x={cornerTo.x}
-    //           y={cornerFrom.y}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMin"
-    //         />
-    //       );
-    //       border.push(
-    //         <image
-    //           href="borders/bottom.png"
-    //           x={cornerTo.x + adjustedWidth - 1}
-    //           y={cornerFrom.y}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMin"
-    //         />
-    //       );
-    //       if (cornerFrom.type == "convex") {
-    //         border.push(
-    //           <image
-    //             href="borders/bottomright.png"
-    //             x={cornerFrom.x}
-    //             y={cornerFrom.y}
-    //             {...cornerBoxDimensions}
-    //             preserveAspectRatio="xMinYMin"
-    //           />
-    //         );
-    //       }
-    //     }
-    //   } else {
-    //     if (edgeDirection == 1) {
-    //       border.push(
-    //         <image
-    //           href="borders/right.png"
-    //           x={cornerFrom.x}
-    //           y={cornerFrom.y}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMin"
-    //         />
-    //       );
-    //       border.push(
-    //         <image
-    //           href="borders/right.png"
-    //           x={cornerFrom.x}
-    //           y={cornerFrom.y + adjustedWidth - 1}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMinYMin"
-    //         />
-    //       );
-    //       if (cornerFrom.type == "convex") {
-    //         border.push(
-    //           <image
-    //             href="borders/topright.png"
-    //             x={cornerFrom.x}
-    //             y={cornerFrom.y - cornerWidth}
-    //             {...cornerBoxDimensions}
-    //             preserveAspectRatio="xMinYMax"
-    //           />
-    //         );
-    //       }
-    //     } else {
-    //       border.push(
-    //         <image
-    //           href="borders/left.png"
-    //           x={cornerFrom.x - adjustedWidth}
-    //           y={cornerTo.y}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMaxYMin"
-    //         />
-    //       );
-    //       border.push(
-    //         <image
-    //           href="borders/left.png"
-    //           x={cornerFrom.x - adjustedWidth}
-    //           y={cornerTo.y + adjustedWidth - 1}
-    //           {...imageBoxDimensions}
-    //           preserveAspectRatio="xMaxYMin"
-    //         />
-    //       );
-    //       if (cornerFrom.type == "convex") {
-    //         border.push(
-    //           <image
-    //             href="borders/bottomleft.png"
-    //             x={cornerFrom.x - cornerWidth}
-    //             y={cornerFrom.y}
-    //             {...cornerBoxDimensions}
-    //             preserveAspectRatio="xMaxYMax"
-    //           />
-    //         );
-    //       } else if (cornerFrom.type == "concave") {
-    //         border.push(
-    //           <rect
-    //             fill={MAP_BG}
-    //             x={cornerFrom.x - cornerWidth}
-    //             y={cornerFrom.y - cornerWidth}
-    //             {...cornerBoxDimensions}
-    //           />
-    //         );
-    //       }
-    //     }
-    //   }
-    // }
-    // return border;
   }
 });
 
