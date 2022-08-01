@@ -68,7 +68,8 @@ const IslandOutline = tsx.component({
     // TODO: this works but depends on a mask from elsewhere in the svg that
     // just happens to have the right shapes in it. ideally, we'd mask this
     // IslandMask with a margin with another IslandMask without a margin that is
-    // created on the spot and somehow placed inside a <mask> tag.
+    // created on the spot and somehow placed inside a <mask> tag, possibly by
+    // returning the mask and the IslandMask inside a <g>.
     return <IslandMask island={context.props.island} margin={w} mask={"url(#level0Islands)"} />;
   }
 });
@@ -147,7 +148,6 @@ const IslandBorder = tsx.component({
           x: farSquarePoint.y - cornerTo.y,
           y: -(farSquarePoint.x - cornerTo.x)
         };
-        console.log(offsetVector);
         const baseline: [Coords, Coords] = [cornerTo, farSquarePoint];
         const square = AABB.fromPoints(
           ...baseline,
@@ -372,6 +372,16 @@ const MapOverlay = tsx.component({
         ) : null}
         {p.outliningSubMaps ? overlayCache.outlines : null}
         {p.highlightingPaths ? overlayCache.paths : null}
+        {/* collision visualization: {p.islands[3].items[0].outline.collisionLines.map(line => (
+          <line
+            x1={line.start.x}
+            y1={line.start.y}
+            x2={line.end.x}
+            y2={line.end.y}
+            stroke="black"
+            stroke-width="8"
+          />
+        ))} */}
         {/* stronghold zones: <circle
                     cx="64"
                     cy="64"

@@ -53,9 +53,77 @@ interface Coords {
   y: number;
 }
 
-interface Line {
+enum SideOfLine {
+  left,
+  right,
+  directlyOn
+}
+
+class Line {
   start: Coords;
   end: Coords;
+  constructor(start: Coords, end: Coords) {
+    this.start = start;
+    this.end = end;
+  }
+  get aabb(): AABB {
+    return AABB.fromPoints(this.start, this.end);
+  }
+  get standardForm(): { A: number; B: number; C: number } {
+    const partial = {
+      A: this.end.y - this.start.y,
+      B: this.start.x - this.end.x
+    };
+    return {
+      ...partial,
+      C: partial.A * this.start.x + partial.B * this.start.y
+    };
+  }
+  pointOnSide(point: Coords): SideOfLine {
+    const det =
+      (this.end.x - this.start.x) * (point.y - this.start.y) -
+      (this.end.y - this.start.y) * (point.x - this.start.x);
+    if (Math.abs(det) < 0.0001) {
+      return SideOfLine.directlyOn;
+    } else if (det < 0) {
+      return SideOfLine.left;
+    } else {
+      return SideOfLine.right;
+    }
+  }
+  projectPointOnto(point: Coords): Coords | null {
+    function addCoords(a: Coords, b: Coords): Coords {
+      return { x: a.x + b.x, y: a.y + b.y };
+    }
+    function subtractCoords(a: Coords, b: Coords): Coords {
+      return { x: a.x - b.x, y: a.y - b.y };
+    }
+
+    const posVector = subtractCoords(this.end, this.start);
+    const rotPosVector = { x: -posVector.y, y: posVector.x };
+    const projLine = new Line(point, addCoords(point, rotPosVector));
+
+    // https://www.topcoder.com/thrive/articles/Geometry%20Concepts%20part%202:%20%20Line%20Intersection%20and%20its%20Applications
+    const l1 = this.standardForm;
+    const l2 = projLine.standardForm;
+
+    const det = l1.A * l2.B - l2.A * l1.B;
+    if (det == 0) {
+      // parallel lines, no projection possible
+      return null;
+    } else {
+      const x = (l2.B * l1.C - l1.B * l2.C) / det;
+      const y = (l1.A * l2.C - l2.A * l1.C) / det;
+      console.log("projection happening in", this);
+      console.log("projection happening along", projLine);
+      console.log(`projecting onto (${x}, ${y})`);
+      if (this.aabb.pointOn({ x, y }, 1)) {
+        return { x, y };
+      } else {
+        return null;
+      }
+    }
+  }
 }
 
 class AABB {
@@ -69,9 +137,9 @@ class AABB {
     this.maxX = maxX;
     this.maxY = maxY;
   }
-  static fromPoints(p1: Coords, p2: Coords, p3: Coords, p4: Coords) {
-    const exes = [p1, p2, p3, p4].map(p => p.x);
-    const whys = [p1, p2, p3, p4].map(p => p.y);
+  static fromPoints(...points: Coords[]) {
+    const exes = points.map(p => p.x);
+    const whys = points.map(p => p.y);
     return new AABB(Math.min(...exes), Math.max(...exes), Math.min(...whys), Math.max(...whys));
   }
   get width(): number {
@@ -79,6 +147,14 @@ class AABB {
   }
   get height(): number {
     return this.maxY - this.minY;
+  }
+  pointOn(point: Coords, tolerance = Number.EPSILON) {
+    return (
+      point.x + tolerance >= this.minX &&
+      point.x - tolerance <= this.maxX &&
+      point.y + tolerance >= this.minY &&
+      point.y - tolerance <= this.maxY
+    );
   }
 }
 
@@ -94,8 +170,61 @@ interface StoredIsland {
 
 class IslandOutline {
   corners: readonly Corner[];
-  constructor(corners: Corner[]) {
+  collisionLines: readonly Line[];
+  constructor(corners: Corner[], mapSideLength: number) {
     this.corners = Object.freeze(corners.map(c => Object.freeze(c)));
+    const collisionPoints: Coords[] = [];
+    for (let i = 0; i < corners.length; i++) {
+      const corner = corners[i];
+      if (corner.type == "convex") {
+        collisionPoints.push(corner);
+      } else {
+        const prev = i == 0 ? corners.slice(-1)[0] : corners[i - 1];
+        const after = corners[(i + 1) % corners.length];
+        if (prev.type == "concave" || after.type == "concave") {
+          // if we have multiple concave corners in a row, ignore them for
+          // collision purposes (that would look something like this:
+          //   _____
+          //  |_    |
+          //   _|   |
+          //  |_____|. the collision polygon in this case would just be a square.)
+          continue;
+        }
+        // cut out the concave corner. make a point one map side length further
+        // towards the previous corner and then another point one map side length
+        // further towards the next corner.
+        const prevDist = distance(prev, corner);
+        const prevScaleFactor = (prevDist - mapSideLength) / prevDist;
+        const p1 = lerp(prev, corner, prevScaleFactor);
+        collisionPoints.push({ x: Math.round(p1.x), y: Math.round(p1.y) });
+        const afterDist = distance(corner, after);
+        const afterScaleFactor = mapSideLength / afterDist;
+        const p2 = lerp(corner, after, afterScaleFactor);
+        collisionPoints.push({ x: Math.round(p2.x), y: Math.round(p2.y) });
+      }
+    }
+    const lines = [];
+    for (let i = 0; i < collisionPoints.length; i++) {
+      const from = i == 0 ? collisionPoints.slice(-1)[0] : collisionPoints[i - 1];
+      const to = collisionPoints[i];
+      lines.push(Object.freeze(new Line(from, to)));
+    }
+    this.collisionLines = Object.freeze(
+      lines.map(l => Object.freeze(new Line(Object.freeze(l.start), Object.freeze(l.end))))
+    );
+  }
+  keepPointInside(point: Coords): Coords {
+    for (const line of this.collisionLines) {
+      if (line.pointOnSide(point) == SideOfLine.left) {
+        console.log("point", point, "is on left side of line", line);
+        const projection = line.projectPointOnto(point);
+        if (projection !== null) {
+          console.log("found projection", projection);
+          return projection;
+        }
+      }
+    }
+    return point;
   }
 }
 
@@ -118,7 +247,7 @@ class Island {
     this.level = record.scale;
     this.id = Island.idSource++;
     this.maps = record.maps.map(m => Object.freeze(m));
-    this.outline = new IslandOutline(record.outline);
+    this.outline = new IslandOutline(record.outline, this.mapSideLength);
     for (const map of this.maps) {
       Island.mapIndex[Island.getMapIndexKey(this.level, map)] = this;
       this.minX = Math.min(this.minX, map.x);
@@ -209,6 +338,18 @@ interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
 // sigh
 function clamp(input: number, min: number, max: number) {
   return Math.max(min, Math.min(input, max));
+}
+
+/**
+ * linear interpolation between two points.
+ * @param p1 point we are coming from
+ * @param p2 point we are going to
+ * @param weight the fraction of the total distance between the two points that
+ * we want to cross, expressed in the range [0, 1]
+ * @returns Coords for a point between p1 and p2
+ */
+function lerp(p1: Coords, p2: Coords, weight: number): Coords {
+  return { x: p1.x * (1 - weight) + p2.x * weight, y: p1.y * (1 - weight) + p2.y * weight };
 }
 
 /**
