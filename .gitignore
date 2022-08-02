@@ -1,6 +1,5 @@
 /public/maps/*.png
 /raw_data_processing/put_raw_data_here/*.dat
-/raw_data_processing/skip_these_maps.json
 
 /build_all_local
 /public/maps/backup/*
