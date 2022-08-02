@@ -226,7 +226,7 @@ class Island:
         }
 
     @classmethod
-    def maps_to_islands(cls, maps: list[Map]) -> list["Island"]:
+    def maps_to_islands(cls, maps: list[Map], merge_all: bool=False) -> list["Island"]:
         """Takes a list of maps with the same scale and divides them into
         islands."""
         for i in range(1, len(maps)):
@@ -266,4 +266,36 @@ class Island:
             search(starting_map, collection)
             print(f"created island of size {len(collection)}")
             islands.append(Island(list(collection)))
+        if merge_all:
+            #  TODO: make this work for cases other than spare islands to the left
+            print("MERGING ALL")
+            biggest_islands = sorted(islands, key=lambda i: len(i.maps), reverse=True)
+            fake_id = -1
+            map_collection = biggest_islands[0].maps
+            for island in biggest_islands[1:]:
+                map_collection += island.maps
+                leftmost = sorted(island.maps, key=lambda m: m.x_center)[0]
+                pos = 1
+                while True:
+                    to_the_left = Map(
+                        fake_id,
+                        island.scale, 
+                        0, 
+                        leftmost.x_center-pos*leftmost.side_length, 
+                        leftmost.z_center, 
+                        leftmost.dimension, 
+                        b"", 
+                        ""
+                    )
+                    if next((x for x in biggest_islands[0].maps if 
+                        x.x_center == to_the_left.x_center and
+                        x.z_center == to_the_left.z_center), None
+                    ) is not None:
+                        break
+                    map_collection.append(to_the_left)
+                    pos += 1
+                    fake_id -=1
+            print(f"Merger created island of size {len(map_collection)}")
+            return [Island(map_collection)]
+
         return islands

@@ -22,18 +22,19 @@
       <MapUnderlay :islands="collage.islands" />
       <img
         v-for="map in currentlyVisibleMaps"
-        :key="map.file"
+        :key="map.id"
         :src="`maps/${map.file}`"
         class="subMap"
         :style="{
           ...collage.getPosWithinCollage(map).toCSS(),
           width: level3MapSizePx + 'px',
           height: level3MapSizePx + 'px',
+          display: map.file ? 'unset' : 'none'
         }"
       />
       <img
         v-for="subMap in currentlyVisibleSubMaps"
-        :key="subMap.file"
+        :key="subMap.id"
         :src="`maps/${subMap.file}`"
         class="subMap"
         :style="{
@@ -57,7 +58,8 @@
           !outliningSubMaps &&
           highlightingMap &&
           !isMidZoom &&
-          !showingPaths
+          !showingPaths &&
+          currentlyCenteredMap.file
         "
         :src="'/maps/' + currentlyCenteredMap.file"
         :style="{

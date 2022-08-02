@@ -97,7 +97,9 @@ def process_all(raw_data_path: PathLike) -> None:
     islands = {}
     for k, v in processed_maps.items():
         if k != "unused_maps":
-            islands[k] = [x.to_dict() for x in Island.maps_to_islands(v)]
+            islands[k] = [
+                x.to_dict() for x in Island.maps_to_islands(v, merge_all=k==3)
+            ]
 
     with open("../src/mapdata/processed_maps.json", "w+") as output_record:
         json.dump(islands, output_record)
