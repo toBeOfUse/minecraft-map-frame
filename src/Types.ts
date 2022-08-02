@@ -230,7 +230,6 @@ class IslandOutline {
   }
   keepPointInside(point: Coords): Coords {
     if (!this.pointIsInside(point)) {
-      console.log("point outside polygon!");
       let minAdjustment = Infinity;
       let result: Coords | null = null;
       for (const line of this.collisionLines) {
