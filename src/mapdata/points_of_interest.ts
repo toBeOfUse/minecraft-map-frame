@@ -315,12 +315,6 @@ pois[3] = {
       type: Mining
     },
     {
-      x: 253.76,
-      y: 538.4,
-      text: '"glory holes"',
-      type: Normal
-    },
-    {
       x: 530.16,
       y: 920,
       text: "weird mini-ravine; visible iron",
@@ -337,12 +331,6 @@ pois[3] = {
       y: 456.88,
       text: "big cave boi",
       type: Mining
-    },
-    {
-      x: 987.84,
-      y: 653.04,
-      text: "coochfield (flowerz)",
-      type: Biome
     },
     {
       x: 884.96,
@@ -1170,7 +1158,7 @@ pois[3] = {
     {
       x: 3171.64,
       y: -2727.95,
-      text: "this one has a fucked-up floating bit",
+      text: "floating bits",
       type: Village
     },
     {
