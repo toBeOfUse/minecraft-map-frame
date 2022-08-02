@@ -5,6 +5,7 @@ import gzip
 from cpython cimport array
 import array
 from libc.string cimport memcmp
+from models import Map
 
 with open("colorchart.json") as chart_file:
     color_chart_json = json.load(chart_file)
@@ -39,7 +40,7 @@ def nbt_search(unsigned char[:] nbt_bytes, unsigned char[] key, int key_length, 
         return nbt_bytes[pos+2:pos+2+size]
 
 
-def convert(str file_path):
+def convert(str file_path, int map_id):
     with open(file_path, "rb") as data_file:
         nbt_data = gzip.decompress(data_file.read())
     cdef nbt_array = array.array("B", nbt_data)
@@ -70,16 +71,12 @@ def convert(str file_path):
             if rgba_color_data[i+3] == 0:
                 blanks_encountered += 1
 
-    file_name = file_path.split("/")[-1].split("\\")[-1]
-    output_file = "./temp/"+file_name+"_temp.bin"
-    with open(output_file, "wb+") as output:
-        output.write(rgba_color_data.tobytes())
-    
-    return {
-        "scale": map_scale,
-        "blanks": blanks_encountered,
-        "relative_x": map_x_center,
-        "relative_z": map_z_center,
-        "dimension": ''.join([chr(x) for x in dimension]),
-        "temp_file": output_file
-    }
+    return Map(
+        id=map_id,
+        scale=map_scale,
+        blank_pixels=blanks_encountered,
+        x_center=map_x_center,
+        z_center=map_z_center,
+        dimension=''.join([chr(x) for x in dimension]),
+        rgba=rgba_color_data.tobytes()
+    )

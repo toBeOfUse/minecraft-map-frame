@@ -1,8 +1,3 @@
-import type Island from "./Island";
-import type { BBox } from "rbush";
-import chroma from "chroma-js";
-import { Bezier } from "bezier-js";
-
 // simple cartesian grid types
 interface CSSDimensions {
   width: string;
@@ -58,113 +53,241 @@ interface Coords {
   y: number;
 }
 
-// types used by the Island class to draw borders around Island objects
-enum CornerType {
-  Unset,
-  Straight,
-  Concave,
-  Convex,
-}
-
-class Corner {
-  x: number;
-  y: number;
-  angle: CornerType;
-
-  constructor(x: number, y: number) {
-    this.angle = CornerType.Unset;
-    this.x = x;
-    this.y = y;
-  }
-
-  setCornerType(type: CornerType) {
-    this.angle = type;
-  }
+enum SideOfLine {
+  left,
+  right,
+  directlyOn
 }
 
 class Line {
-  // we need to be able to index our lines by their left-most x coordinate and by
-  // their upper-most y coordinate, so these two numbers are ordered least to
-  // greatest. (the second number in the tuple is there for the hasHeight and
-  // hasWidth properties.)
-  xRange: [number, number];
-  yRange: [number, number];
-  get hasWidth() {
-    return this.xRange[0] !== this.xRange[1];
+  start: Coords;
+  end: Coords;
+  constructor(start: Coords, end: Coords) {
+    this.start = start;
+    this.end = end;
   }
-  get hasHeight() {
-    return this.yRange[0] !== this.yRange[1];
+  get aabb(): AABB {
+    return AABB.fromPoints(this.start, this.end);
   }
-  get width() {
-    return this.xRange[1] - this.xRange[0];
+  get standardForm(): { A: number; B: number; C: number } {
+    const partial = {
+      A: this.end.y - this.start.y,
+      B: this.start.x - this.end.x
+    };
+    return {
+      ...partial,
+      C: partial.A * this.start.x + partial.B * this.start.y
+    };
   }
-  get height() {
-    return this.yRange[1] - this.yRange[0];
-  }
-
-  constructor(
-    public x1: number,
-    public y1: number,
-    public x2: number,
-    public y2: number
-  ) {
-    this.xRange = [Math.min(x1, x2), Math.max(x1, x2)];
-    this.yRange = [Math.min(y1, y2), Math.max(y1, y2)];
-  }
-  // returns the x-coordinate of the point on the line segment that is on the
-  // horizontal line for the given y-coordinate. returns NaN in the case of a
-  // nonsensical query.
-  xAt(y: number): number {
-    if (!this.hasHeight || y < this.yRange[0] || y > this.yRange[1]) {
-      return NaN;
-    } else {
-      // figure out how far along the line the given y coordinate places us, on a
-      // scale from 0-1 (if the weight is 0, we are at the same vertical position as
-      // the first point in the line; if the weight is 1, we are at the same vertical
-      // position as the second point in the line; the rest of the possibilities
-      // exist in between)
-      const weight = Math.abs(y - this.y1) / this.height;
-      // linearly interpolate between the x coordinates by applying the weight
-      return this.x2 * weight + this.x1 * (1 - weight);
+  closestPointOn(point: Coords): Coords {
+    function addCoords(a: Coords, b: Coords): Coords {
+      return { x: a.x + b.x, y: a.y + b.y };
     }
-  }
-  yAt(x: number): number {
-    if (!this.hasWidth || x < this.xRange[0] || x > this.xRange[1]) {
-      return NaN;
+    function subtractCoords(a: Coords, b: Coords): Coords {
+      return { x: a.x - b.x, y: a.y - b.y };
+    }
+
+    const posVector = subtractCoords(this.end, this.start);
+    const rotPosVector = { x: -posVector.y, y: posVector.x };
+    const projLine = new Line(point, addCoords(point, rotPosVector));
+
+    // https://www.topcoder.com/thrive/articles/Geometry%20Concepts%20part%202:%20%20Line%20Intersection%20and%20its%20Applications
+    const l1 = this.standardForm;
+    const l2 = projLine.standardForm;
+
+    const det = l1.A * l2.B - l2.A * l1.B;
+    if (det == 0) {
+      return point;
     } else {
-      const weight = Math.abs(x - this.x1) / this.width;
-      return this.y2 * weight + this.y1 * (1 - weight);
+      const result = { x: (l2.B * l1.C - l1.B * l2.C) / det, y: (l1.A * l2.C - l2.A * l1.C) / det };
+      if (this.aabb.pointOn(result)) {
+        return result;
+      } else {
+        const d1 = distance(result, this.start);
+        const d2 = distance(result, this.end);
+        if (d1 < d2) {
+          return this.start;
+        } else {
+          return this.end;
+        }
+      }
     }
   }
 }
 
-class Shape {
-  // xIndex allows you to look up horizontal and diagonal lines by their left-most x
-  // coordinate, yielding an array of lines sorted by their upper-most y coordinate
-  xIndex: Record<number, Line[]> = {};
-  // yIndex allows you to look up vertical and diagonal lines by their upper-most y
-  // coordinate, yielding an array of lines sorted by their left-most x coordinate
-  yIndex: Record<number, Line[]> = {};
-  constructor(public lines: Line[]) {
-    for (const line of lines) {
-      if (line.hasHeight) {
-        if (line.yRange[0] in this.yIndex) {
-          this.yIndex[line.yRange[0]].push(line);
-          this.yIndex[line.yRange[0]].sort((a, b) => a.xRange[0] - b.xRange[0]);
-        } else {
-          this.yIndex[line.yRange[0]] = [line];
-        }
-      }
+class AABB {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  constructor(minX: number, maxX: number, minY: number, maxY: number) {
+    this.minX = minX;
+    this.minY = minY;
+    this.maxX = maxX;
+    this.maxY = maxY;
+  }
+  static fromPoints(...points: Coords[]) {
+    const exes = points.map(p => p.x);
+    const whys = points.map(p => p.y);
+    return new AABB(Math.min(...exes), Math.max(...exes), Math.min(...whys), Math.max(...whys));
+  }
+  get width(): number {
+    return this.maxX - this.minX;
+  }
+  get height(): number {
+    return this.maxY - this.minY;
+  }
+  pointOn(point: Coords, tolerance = Number.EPSILON) {
+    return (
+      point.x + tolerance >= this.minX &&
+      point.x - tolerance <= this.maxX &&
+      point.y + tolerance >= this.minY &&
+      point.y - tolerance <= this.maxY
+    );
+  }
+}
 
-      if (line.hasWidth) {
-        if (line.xRange[0] in this.xIndex) {
-          this.xIndex[line.xRange[0]].push(line);
-          this.xIndex[line.xRange[0]].sort((a, b) => a.yRange[0] - b.yRange[0]);
-        } else {
-          this.xIndex[line.xRange[0]] = [line];
+interface Corner extends Coords {
+  type: "convex" | "concave";
+}
+
+interface StoredIsland {
+  maps: Map[];
+  scale: number;
+  outline: Corner[];
+}
+
+class IslandOutline {
+  corners: readonly Corner[];
+  collisionLines: readonly Line[];
+  constructor(corners: Corner[], mapSideLength: number) {
+    this.corners = Object.freeze(corners.map(c => Object.freeze(c)));
+    const collisionPoints: Coords[] = [];
+    for (let i = 0; i < corners.length; i++) {
+      const corner = corners[i];
+      if (corner.type == "convex") {
+        collisionPoints.push(corner);
+      } else {
+        const prev = i == 0 ? corners.slice(-1)[0] : corners[i - 1];
+        const after = corners[(i + 1) % corners.length];
+        if (prev.type == "concave" || after.type == "concave") {
+          // if we have multiple concave corners in a row, ignore them for
+          // collision purposes (that would look something like this:
+          //   _____
+          //  |_    |
+          //   _|   |
+          //  |_____|. the collision polygon in this case would just be a square.)
+          continue;
+        }
+        // cut out the concave corner. make a point one map side length further
+        // towards the previous corner and then another point one map side length
+        // further towards the next corner. if these points would be redundant,
+        // don't make them.
+        const prevDist = distance(prev, corner);
+        const prevScaleFactor = (prevDist - mapSideLength) / prevDist;
+        if (prevScaleFactor != 0) {
+          const p1 = lerp(prev, corner, prevScaleFactor);
+          collisionPoints.push({ x: Math.round(p1.x), y: Math.round(p1.y) });
+        }
+        const afterDist = distance(corner, after);
+        const afterScaleFactor = mapSideLength / afterDist;
+        if (afterScaleFactor != 1) {
+          const p2 = lerp(corner, after, afterScaleFactor);
+          collisionPoints.push({ x: Math.round(p2.x), y: Math.round(p2.y) });
         }
       }
     }
+    const lines = [];
+    for (let i = 0; i < collisionPoints.length; i++) {
+      const from = i == 0 ? collisionPoints.slice(-1)[0] : collisionPoints[i - 1];
+      const to = collisionPoints[i];
+      lines.push(Object.freeze(new Line(from, to)));
+    }
+    this.collisionLines = Object.freeze(
+      lines.map(l => Object.freeze(new Line(Object.freeze(l.start), Object.freeze(l.end))))
+    );
+  }
+  /**
+   * De-obfuscation of https://wrfranklin.org/Research/Short_Notes/pnpoly.html
+   */
+  pointIsInside(point: Coords): boolean {
+    let inside = false;
+    for (const line of this.collisionLines) {
+      const inYRange = line.start.y > point.y != line.end.y > point.y;
+      if (inYRange) {
+        // any line segment with a y-range that encompasses point.y whose x when
+        // y=point.y is greater than point.x counts as a collision.
+        const toTheRight =
+          point.x <
+          ((line.end.x - line.start.x) * (point.y - line.start.y)) / (line.end.y - line.start.y) +
+            line.start.x;
+        if (toTheRight) {
+          inside = !inside;
+        }
+      }
+    }
+    return inside;
+  }
+  keepPointInside(point: Coords): Coords {
+    if (!this.pointIsInside(point)) {
+      console.log("point outside polygon!");
+      let minAdjustment = Infinity;
+      let result: Coords | null = null;
+      for (const line of this.collisionLines) {
+        const newPoint = line.closestPointOn(point);
+        const adjustmentSize = distance(point, newPoint);
+        if (adjustmentSize < minAdjustment) {
+          minAdjustment = adjustmentSize;
+          result = newPoint;
+        }
+      }
+      return result as Coords;
+    } else {
+      return point;
+    }
+  }
+}
+
+class Island {
+  level: number;
+  id: number;
+  private static idSource: number = 0;
+  maps: Map[];
+  pointsOfInterest: PointOfInterest[] = [];
+  minX: number = Infinity;
+  maxX: number = -Infinity;
+  minY: number = Infinity;
+  maxY: number = -Infinity;
+  outline: IslandOutline;
+  static mapIndex: Record<string, Island> = {};
+  private static getMapIndexKey(level: number, topLeft: Coords) {
+    return `${level}: (${topLeft.x}, ${topLeft.y})`;
+  }
+  constructor(record: StoredIsland) {
+    this.level = record.scale;
+    this.id = Island.idSource++;
+    this.maps = record.maps.map(m => Object.freeze(m));
+    this.outline = new IslandOutline(record.outline, this.mapSideLength);
+    for (const map of this.maps) {
+      Island.mapIndex[Island.getMapIndexKey(this.level, map)] = this;
+      this.minX = Math.min(this.minX, map.x);
+      this.minY = Math.min(this.minY, map.y);
+      this.maxX = Math.max(this.maxX, map.x + getEdgeLength(this.level));
+      this.maxY = Math.max(this.maxY, map.y + getEdgeLength(this.level));
+    }
+  }
+  addPOI(poi: PointOfInterest) {
+    poi.setPartOfIsland(this);
+    this.pointsOfInterest.push(poi);
+  }
+  static getIslandContainingMap(level: number, topLeft: Coords) {
+    return Island.mapIndex[Island.getMapIndexKey(level, topLeft)];
+  }
+  pointInIsland(): boolean {
+    return true;
+  }
+  get mapSideLength(): number {
+    return getEdgeLength(this.level);
   }
 }
 
@@ -219,235 +342,12 @@ class PointOfInterest {
     PointOfInterest.idSource += 1;
   }
 
-  isPartOfIsland(island: Island) {
+  setPartOfIsland(island: Island) {
     this.islandIDs.push(island.id);
     if (island.level != 3) {
       this.onlyLevel3 = false;
     }
   }
-}
-
-interface SVGPathComponent {
-  getPointAt(t: number): Coords;
-  asCommand(includeInitialMove: boolean): string;
-  readonly length: number;
-  p1: Coords;
-  p2: Coords;
-}
-
-class SVGLineSegment implements SVGPathComponent {
-  p1: Coords;
-  p2: Coords;
-  constructor(p1: Coords, p2: Coords) {
-    this.p1 = p1;
-    this.p2 = p2;
-  }
-  asCommand(includeInitialMove: boolean = false): string {
-    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
-      `L ${this.p2.x} ${this.p2.y}`);
-  }
-  get length() {
-    return distance(this.p1, this.p2);
-  }
-  getPointAt(t: number): Coords {
-    if (t < 0 || t > 1) {
-      throw "calling getPointAt in SVGLineSegment with invalid t: " + t;
-    }
-    return {
-      x: this.p1.x + t * (this.p2.x - this.p1.x),
-      y: this.p1.y + t * (this.p2.y - this.p1.y)
-    }
-  }
-}
-
-class SVGQuadraticCurveSegment implements SVGPathComponent {
-  p1: Coords;
-  p2: Coords;
-  controlPoint: Coords;
-  curve: Bezier;
-  constructor(p1: Coords, p2: Coords, controlPoint: Coords) {
-    this.p1 = p1;
-    this.p2 = p2;
-    this.controlPoint = controlPoint;
-    this.curve = new Bezier(p1, controlPoint, p2);
-  }
-  asCommand(includeInitialMove: boolean = false): string {
-    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
-      `Q ${this.controlPoint.x} ${this.controlPoint.y} ${this.p2.x} ${this.p2.y}`);
-  }
-  get length() {
-    return this.curve.length();
-  }
-  getPointAt(t: number): Coords {
-    if (t < 0 || t > 1) {
-      throw "calling getPointAt in SVGQuadraticCurveSegment with invalid t: " + t;
-    }
-    return this.curve.get(t);
-  }
-}
-
-class SVGCubicCurveSegment implements SVGPathComponent {
-  p1: Coords;
-  c1: Coords;
-  p2: Coords;
-  c2: Coords;
-  curve: Bezier;
-  constructor(p1: Coords, c1: Coords, p2: Coords, c2: Coords) {
-    this.p1 = p1;
-    this.c1 = c1;
-    this.p2 = p2;
-    this.c2 = c2;
-    this.curve = new Bezier(p1, c1, c2, p2);
-  }
-  asCommand(includeInitialMove: boolean = false): string {
-    return ((includeInitialMove ? `M ${this.p1.x} ${this.p1.y} ` : '') +
-      `C ${this.c1.x} ${this.c1.y} ${this.c2.x} ${this.c2.y} ${this.p2.x} ${this.p2.y}`);
-  }
-  get length() {
-    return this.curve.length();
-  }
-  getPointAt(t: number): Coords {
-    if (t < 0 || t > 1) {
-      throw "calling getPointAt in SVGCubicCurveSegment with invalid t: " + t;
-    }
-    return this.curve.get(t);
-  }
-}
-
-class PathData {
-  icon: string;
-  points: Coords[];
-  bounds: BBox = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity };
-  smoothed: boolean;
-  color: string;
-  svgComps: SVGPathComponent[];
-  nether: boolean;
-
-  constructor(icon: string, color: string, points: Coords[], smoothed = false, nether = false) {
-    if (points.length < 1) {
-      throw "Cannot initialize path with empty points array";
-    }
-    this.icon = icon;
-    this.points = points;
-    this.smoothed = smoothed;
-    this.color = color;
-    this.nether = nether;
-    for (const point of points) {
-      if (point.x < this.bounds.minX) {
-        this.bounds.minX = point.x;
-      }
-      if (point.x > this.bounds.maxX) {
-        this.bounds.maxX = point.x;
-      }
-      if (point.y < this.bounds.minY) {
-        this.bounds.minY = point.y;
-      }
-      if (point.y > this.bounds.maxY) {
-        this.bounds.maxY = point.y;
-      }
-    }
-    this.svgComps = [];
-    if (!smoothed) {
-      for (let i = 0; i < points.length - 1; i++) {
-        this.svgComps.push(new SVGLineSegment(points[i], points[i + 1]));
-      }
-    } else {
-      // note: this vector needs to be normalized so we can set its length easily
-      let lastControlPointVector = { x: 0, y: 0 };
-      for (let i = 1; i < this.points.length; i++) {
-        const p1 = this.points[i - 1];
-        const p2 = this.points[i];
-        // get the first control point by taking the mirror image of the vector to
-        // the previous control point and lengthening it according to how much ground
-        // this curve has to cover
-        const lineSegmentLength = distance(p1, p2);
-        const controlPointDistance = lineSegmentLength / 4;
-        const c1: Coords = {
-          x: p1.x + (-lastControlPointVector.x * controlPointDistance),
-          y: p1.y + (-lastControlPointVector.y * controlPointDistance)
-        };
-        let c2;
-        if (i < this.points.length - 1) {
-          const nextPoint = this.points[i + 1];
-          // vector that points from p2 to p1
-          const vector1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-          // vector that points from the next point to p2
-          const vector2 = { x: p2.x - nextPoint.x, y: p2.y - nextPoint.y };
-          const middleVector = { x: (vector1.x + vector2.x) / 2, y: (vector1.y + vector2.y) / 2 };
-          const mvLength = distance(middleVector, { x: 0, y: 0 });
-          const normalizedCPV = { x: middleVector.x / mvLength, y: middleVector.y / mvLength };
-          lastControlPointVector = normalizedCPV;
-          const controlPointVector = {
-            x: normalizedCPV.x * controlPointDistance,
-            y: normalizedCPV.y * controlPointDistance
-          };
-          c2 = {
-            x: p2.x + controlPointVector.x,
-            y: p2.y + controlPointVector.y
-          }
-        } else {
-          c2 = p2;
-        }
-        if (i == 0 || i == this.points.length - 1) {
-          this.svgComps.push(new SVGLineSegment(p1, p2));
-        } else {
-          this.svgComps.push(new SVGCubicCurveSegment(p1, c1, p2, c2));
-        }
-      }
-    }
-  }
-
-  get length(): number {
-    return this.svgComps.reduce((previous, current) => previous + current.length, 0);
-  }
-
-  toCommands(): string {
-    return this.svgComps.map((c, i) => c.asCommand(i == 0)).join(" ");
-  }
-
-  getAccentPoints(spaceBetween: number): Coords[] {
-    const result: Coords[] = [];
-
-    if (!this.smoothed) {
-      for (const comp of this.svgComps) {
-        result.push(comp.p1);
-        const extraPoints = Math.floor(comp.length / spaceBetween) - 1;
-        if (extraPoints > 0) {
-          const extraPointsLength = (extraPoints - 1) * spaceBetween;
-          const startingDistance = (comp.length - extraPointsLength) / 2;
-          const startingT = startingDistance / comp.length;
-          for (let i = 0; i < extraPoints; i++) {
-            result.push(comp.getPointAt(startingT + (i * spaceBetween / comp.length)));
-          }
-        }
-        result.push(comp.p2);
-      }
-    } else {
-      let currentCompIndex = 0;
-      let lengthOfPreviousComps = 0;
-      const howManyPoints = Math.floor(this.length / spaceBetween);
-      for (let i = 0; i < howManyPoints; i++) {
-        const t = i / howManyPoints;
-        const lengthAtT = t * this.length;
-        let currentComp = this.svgComps[currentCompIndex];
-        let tForThisComp = (lengthAtT - lengthOfPreviousComps) / currentComp.length;
-        while (tForThisComp > 1) {
-          lengthOfPreviousComps += currentComp.length;
-          currentCompIndex++;
-          currentComp = this.svgComps[currentCompIndex];
-          tForThisComp = (lengthAtT - lengthOfPreviousComps) / currentComp.length;
-        }
-        result.push(currentComp.getPointAt(tForThisComp));
-      }
-      result.push(this.points[this.points.length - 1]);
-    }
-    return result;
-  }
-
-  get darkColor(): string {
-    return chroma(this.color).darken(2).hex();
-  }
-
 }
 
 interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
@@ -458,6 +358,18 @@ interface ItemsInLevel<Type extends Map | PointOfInterest | Island> {
 // sigh
 function clamp(input: number, min: number, max: number) {
   return Math.max(min, Math.min(input, max));
+}
+
+/**
+ * linear interpolation between two points.
+ * @param p1 point we are coming from
+ * @param p2 point we are going to
+ * @param weight the fraction of the total distance between the two points that
+ * we want to cross, expressed in the range [0, 1]
+ * @returns Coords for a point between p1 and p2
+ */
+function lerp(p1: Coords, p2: Coords, weight: number): Coords {
+  return { x: p1.x * (1 - weight) + p2.x * weight, y: p1.y * (1 - weight) + p2.y * weight };
 }
 
 /**
@@ -486,8 +398,6 @@ export {
   Dimensions,
   Position,
   Map,
-  Corner,
-  CornerType,
   Coords,
   clamp,
   mod,
@@ -497,8 +407,8 @@ export {
   StoredPOI,
   POIType,
   Line,
-  Shape,
   ItemsInLevel,
-  PathData,
-  SVGCubicCurveSegment
+  Island,
+  StoredIsland,
+  AABB
 };
