@@ -79,19 +79,7 @@ class Line {
       C: partial.A * this.start.x + partial.B * this.start.y
     };
   }
-  pointOnSide(point: Coords): SideOfLine {
-    const det =
-      (this.end.x - this.start.x) * (point.y - this.start.y) -
-      (this.end.y - this.start.y) * (point.x - this.start.x);
-    if (Math.abs(det) < 0.0001) {
-      return SideOfLine.directlyOn;
-    } else if (det < 0) {
-      return SideOfLine.left;
-    } else {
-      return SideOfLine.right;
-    }
-  }
-  projectPointOnto(point: Coords): Coords | null {
+  closestPointOn(point: Coords): Coords {
     function addCoords(a: Coords, b: Coords): Coords {
       return { x: a.x + b.x, y: a.y + b.y };
     }
@@ -109,18 +97,19 @@ class Line {
 
     const det = l1.A * l2.B - l2.A * l1.B;
     if (det == 0) {
-      // parallel lines, no projection possible
-      return null;
+      return point;
     } else {
-      const x = (l2.B * l1.C - l1.B * l2.C) / det;
-      const y = (l1.A * l2.C - l2.A * l1.C) / det;
-      console.log("projection happening in", this);
-      console.log("projection happening along", projLine);
-      console.log(`projecting onto (${x}, ${y})`);
-      if (this.aabb.pointOn({ x, y }, 1)) {
-        return { x, y };
+      const result = { x: (l2.B * l1.C - l1.B * l2.C) / det, y: (l1.A * l2.C - l2.A * l1.C) / det };
+      if (this.aabb.pointOn(result)) {
+        return result;
       } else {
-        return null;
+        const d1 = distance(result, this.start);
+        const d2 = distance(result, this.end);
+        if (d1 < d2) {
+          return this.start;
+        } else {
+          return this.end;
+        }
       }
     }
   }
@@ -192,15 +181,20 @@ class IslandOutline {
         }
         // cut out the concave corner. make a point one map side length further
         // towards the previous corner and then another point one map side length
-        // further towards the next corner.
+        // further towards the next corner. if these points would be redundant,
+        // don't make them.
         const prevDist = distance(prev, corner);
         const prevScaleFactor = (prevDist - mapSideLength) / prevDist;
-        const p1 = lerp(prev, corner, prevScaleFactor);
-        collisionPoints.push({ x: Math.round(p1.x), y: Math.round(p1.y) });
+        if (prevScaleFactor != 0) {
+          const p1 = lerp(prev, corner, prevScaleFactor);
+          collisionPoints.push({ x: Math.round(p1.x), y: Math.round(p1.y) });
+        }
         const afterDist = distance(corner, after);
         const afterScaleFactor = mapSideLength / afterDist;
-        const p2 = lerp(corner, after, afterScaleFactor);
-        collisionPoints.push({ x: Math.round(p2.x), y: Math.round(p2.y) });
+        if (afterScaleFactor != 1) {
+          const p2 = lerp(corner, after, afterScaleFactor);
+          collisionPoints.push({ x: Math.round(p2.x), y: Math.round(p2.y) });
+        }
       }
     }
     const lines = [];
@@ -213,18 +207,44 @@ class IslandOutline {
       lines.map(l => Object.freeze(new Line(Object.freeze(l.start), Object.freeze(l.end))))
     );
   }
-  keepPointInside(point: Coords): Coords {
+  /**
+   * De-obfuscation of https://wrfranklin.org/Research/Short_Notes/pnpoly.html
+   */
+  pointIsInside(point: Coords): boolean {
+    let inside = false;
     for (const line of this.collisionLines) {
-      if (line.pointOnSide(point) == SideOfLine.left) {
-        console.log("point", point, "is on left side of line", line);
-        const projection = line.projectPointOnto(point);
-        if (projection !== null) {
-          console.log("found projection", projection);
-          return projection;
+      const inYRange = line.start.y > point.y != line.end.y > point.y;
+      if (inYRange) {
+        // any line segment with a y-range that encompasses point.y whose x when
+        // y=point.y is greater than point.x counts as a collision.
+        const toTheRight =
+          point.x <
+          ((line.end.x - line.start.x) * (point.y - line.start.y)) / (line.end.y - line.start.y) +
+            line.start.x;
+        if (toTheRight) {
+          inside = !inside;
         }
       }
     }
-    return point;
+    return inside;
+  }
+  keepPointInside(point: Coords): Coords {
+    if (!this.pointIsInside(point)) {
+      console.log("point outside polygon!");
+      let minAdjustment = Infinity;
+      let result: Coords | null = null;
+      for (const line of this.collisionLines) {
+        const newPoint = line.closestPointOn(point);
+        const adjustmentSize = distance(point, newPoint);
+        if (adjustmentSize < minAdjustment) {
+          minAdjustment = adjustmentSize;
+          result = newPoint;
+        }
+      }
+      return result as Coords;
+    } else {
+      return point;
+    }
   }
 }
 

@@ -264,10 +264,6 @@ export default {
         new Position(event.pageX, event.pageY),
         this.fullMapPos
       );
-      const originalCenterPoint = this.collage.getCoordsWithinCollageFromViewportPos(
-        new Position(this.windowWidth / 2, this.windowHeight / 2),
-        this.fullMapPos
-      );
       let newFactor = this.scaleFactor + event.deltaY * -0.00025;
       newFactor = clamp(newFactor, this.minScaleFactor, this.maxScaleFactor);
       if (newFactor !== this.scaleFactor) {
@@ -276,20 +272,15 @@ export default {
           mapLevel: 3,
           edgeLengthPx: this.level3MapSizePx,
         });
-        // we have to scale the map, move the map to keep the center point
-        // the same, obtain the bounds, and then move it as much as the
-        // bounds allow to restore the point under the mouse to the same
-        // point on the map that it used to be
-        const intermediateFullMapPos = this.collage.getPosCenteredOn(
-          originalCenterPoint,
-          this.viewportDimensions
-        );
-        this.fullMapPos = intermediateFullMapPos;
         const newFullMapPos = this.collage.getPosWithPlacedPoint(pointUnderMouse, {
           x: event.pageX,
           y: event.pageY,
         });
-        this.fullMapPos = newFullMapPos;
+        this.fullMapPos = this.collage.validateCollagePos(
+          newFullMapPos,
+          this.viewportDimensions,
+          this.currentIsland
+        );
       }
     },
     levelChange(newLevel, map) {
@@ -364,6 +355,8 @@ export default {
         event.preventDefault();
         let newX, newY;
         if (event.type.startsWith("mouse") || event.touches?.length == 1) {
+          // set newX, newY, this.lastPanningX, and this.lastPanningY based on
+          // this pure panning event
           const newPointerX = event.type.startsWith("mouse")
             ? event.pageX
             : event.touches[0]?.pageX;
@@ -375,6 +368,9 @@ export default {
           this.lastPanningX = newPointerX;
           this.lastPanningY = newPointerY;
         } else if (event.touches?.length > 1) {
+          // // set newX, newY, this.lastPanningX, this.lastPanningY,
+          // this.lastDistBetweenTouches and this.scaleFactor based on this
+          // pan/scale pinch event.
           const x1 = event.touches[0].pageX,
             x2 = event.touches[1].pageX;
           const y1 = event.touches[0].pageY,
@@ -428,9 +424,16 @@ export default {
           this.lastDistBetweenTouches = newDistBetweenTouches;
         }
 
+        // use newX and newY to check for bounds collision and then set
+        // this.fullMapPos. record the direction and speed of the pan so we have
+        // momentum data for a follow-up slide.
         const oldFullMapPos = this.fullMapPos;
 
-        this.fullMapPos = new Position(newX, newY);
+        this.fullMapPos = this.collage.validateCollagePos(
+          new Position(newX, newY),
+          this.viewportDimensions,
+          this.currentIsland
+        );
 
         const panningVector = {
           x: this.fullMapPos.left - oldFullMapPos.left,
@@ -481,13 +484,22 @@ export default {
         ) {
           const elapsedTime = currentTime - oldTime;
           oldTime = currentTime;
-          this.fullMapPos = new Position(
+
+          const theoreticalNewPos = new Position(
             this.fullMapPos.left +
               this.lastPanningDirection.x * (this.lastPanningSpeed * elapsedTime),
             this.fullMapPos.top +
               this.lastPanningDirection.y * (this.lastPanningSpeed * elapsedTime)
           );
+
+          this.fullMapPos = this.collage.validateCollagePos(
+            theoreticalNewPos,
+            this.viewportDimensions,
+            this.currentIsland
+          );
+
           this.lastPanningSpeed *= 0.9;
+
           if (this.lastPanningSpeed <= 0.05) {
             this.lastPanningSpeed = 0;
             this.sliding = false;
@@ -631,69 +643,6 @@ export default {
       );
       return result;
     },
-    // currentPanningBounds() {
-    //   // break glass in case of debugging something completely different:
-    //   // return {
-    //   //     lowerXBound: -Infinity,
-    //   //     upperXBound: Infinity,
-    //   //     lowerYBound: -Infinity,
-    //   //     upperYBound: Infinity
-    //   // };
-
-    //   // translate the point at the center of the viewport into the map collage's
-    //   // coordinate system
-    //   const centerPoint = new Position(this.windowWidth / 2, this.windowHeight / 2);
-    //   const coordsWithinCollage = this.collage.getCoordsWithinCollageFromViewportPos(
-    //     centerPoint,
-    //     this.fullMapPos
-    //   );
-    //   // round the coordinates of the point at the center of the viewport down to
-    //   // retrieve the upper left corner of the map that is currently centered
-    //   // at whatever zoom level we are at
-    //   const mapX =
-    //     Math.floor(coordsWithinCollage.x / getEdgeLength(this.zoomLevel)) *
-    //     getEdgeLength(this.zoomLevel);
-    //   const mapY =
-    //     Math.floor(coordsWithinCollage.y / getEdgeLength(this.zoomLevel)) *
-    //     getEdgeLength(this.zoomLevel);
-    //   // use the islandShape object's properties to retrieve the lines that
-    //   // bound the current island that are directly left and right and directly
-    //   // below and above the current center-of-the-viewport point
-    //   const xBoundLines = this.currentIsland.islandShape.yIndex[mapY];
-    //   const yBoundLines = this.currentIsland.islandShape.xIndex[mapX];
-    //   // determine the minimum x and y values and the maximum x and y values
-    //   // that the center-of-the-viewport can have in the collage coordinate
-    //   // system while still being over the current island
-    //   const mapSpaceLowerBounds = {
-    //     x: xBoundLines[0].xAt(coordsWithinCollage.y),
-    //     y: yBoundLines[0].yAt(coordsWithinCollage.x),
-    //   };
-    //   const mapSpaceUpperBounds = {
-    //     x: xBoundLines[xBoundLines.length - 1].xAt(coordsWithinCollage.y),
-    //     y: yBoundLines[yBoundLines.length - 1].yAt(coordsWithinCollage.x),
-    //   };
-    //   // translate those minimums and maximum into pixel coordinates relative
-    //   // to the top left of the viewport
-    //   const screenSpaceLowerBounds = this.collage.getPosWithinCollage(mapSpaceLowerBounds);
-    //   screenSpaceLowerBounds._left += this.fullMapPos.left;
-    //   screenSpaceLowerBounds._top += this.fullMapPos.top;
-    //   const screenSpaceUpperBounds = this.collage.getPosWithinCollage(mapSpaceUpperBounds);
-    //   screenSpaceUpperBounds._left += this.fullMapPos.left;
-    //   screenSpaceUpperBounds._top += this.fullMapPos.top;
-    //   // translate the pixel coordinates establishing the minimums and maximums
-    //   // for the center point of the screen into pixel coordinate bounds for
-    //   // the placement of the map. the + 1s are a hack to keep the user from
-    //   // panning onto the right and top edges of the current island, which are
-    //   // a sort of edge case
-    //   const result = {
-    //     lowerXBound: this.fullMapPos.left - (screenSpaceUpperBounds.left - centerPoint.left) + 1,
-    //     upperXBound: this.fullMapPos.left + (centerPoint.left - screenSpaceLowerBounds.left),
-    //     lowerYBound: this.fullMapPos.top - (screenSpaceUpperBounds.top - centerPoint.top) + 1,
-    //     upperYBound: this.fullMapPos.top + (centerPoint.top - screenSpaceLowerBounds.top),
-    //   };
-
-    //   return result;
-    // },
     currentPointsOfInterest() {
       let narrowedDownPoints = [];
       if (this.isMidZoom) {

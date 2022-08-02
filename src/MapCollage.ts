@@ -370,6 +370,16 @@ export default class MapCollage {
     })[0];
   }
 
+  validateCollagePos(collagePos: Position, viewport: Dimensions, currentIsland: Island) {
+    const newCenterInMap = this.getCoordsWithinCollageFromViewportPos(
+      new Position(viewport.width / 2, viewport.height / 2),
+      collagePos
+    );
+    const validatedNewCenter = currentIsland.outline.keepPointInside(newCenterInMap);
+
+    return this.getPosCenteredOn(validatedNewCenter, viewport);
+  }
+
   BBoxToCSS(bbox: BBox) {
     const position = this.getPosWithinCollage({
       x: bbox.minX,

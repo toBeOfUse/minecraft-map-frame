@@ -372,16 +372,18 @@ const MapOverlay = tsx.component({
         ) : null}
         {p.outliningSubMaps ? overlayCache.outlines : null}
         {p.highlightingPaths ? overlayCache.paths : null}
-        {/* collision visualization: {p.islands[3].items[0].outline.collisionLines.map(line => (
-          <line
-            x1={line.start.x}
-            y1={line.start.y}
-            x2={line.end.x}
-            y2={line.end.y}
-            stroke="black"
-            stroke-width="8"
-          />
-        ))} */}
+        {/* {p.islands[0].items.flatMap(i =>
+          i.outline.collisionLines.map(line => (
+            <line
+              x1={line.start.x}
+              y1={line.start.y}
+              x2={line.end.x}
+              y2={line.end.y}
+              stroke="red"
+              stroke-width="4"
+            />
+          ))
+        )} */}
         {/* stronghold zones: <circle
                     cx="64"
                     cy="64"
