@@ -29,7 +29,7 @@
           ...collage.getPosWithinCollage(map).toCSS(),
           width: level3MapSizePx + 'px',
           height: level3MapSizePx + 'px',
-          display: map.file ? 'unset' : 'none'
+          display: map.file ? 'unset' : 'none',
         }"
       />
       <img
@@ -61,7 +61,7 @@
           !showingPaths &&
           currentlyCenteredMap.file
         "
-        :src="'/maps/' + currentlyCenteredMap.file"
+        :src="'maps/' + currentlyCenteredMap.file"
         :style="{
           width: level3MapSizePx + 'px',
           height: level3MapSizePx + 'px',
@@ -768,8 +768,8 @@ export default {
 <style lang="scss">
 @font-face {
   font-family: "andada";
-  src: url("/andada-regular-webfont.woff2") format("woff2"),
-    url("/andada-regular-webfont.woff") format("woff");
+  src: url("../public/andada-regular-webfont.woff2") format("woff2"),
+    url("../public/andada-regular-webfont.woff") format("woff");
   font-weight: normal;
   font-style: normal;
 }
